@@ -76,6 +76,7 @@ DEMO_HTML = """
         .event.agent_decision { border-left-color: #fd7e14; }
         .event.answer_generated { border-left-color: #28a745; }
         .loading { text-align: center; padding: 20px; color: #666; }
+        .answer-content { background: #f0f9ff; border: 1px solid #bfdbfe; border-radius: 4px; padding: 15px; margin-top: 8px; line-height: 1.6; white-space: pre-wrap; word-wrap: break-word; max-height: 400px; overflow-y: auto; }
     </style>
 </head>
 <body>
@@ -184,7 +185,16 @@ DEMO_HTML = """
             
             const eventContent = document.createElement('div');
             eventContent.className = 'event-content';
-            eventContent.textContent = getEventSummary(event);
+            
+            if (event.event_type === 'answer_generated' && event.data.answer) {
+                // 专门为答案创建格式化显示
+                const answerDiv = document.createElement('div');
+                answerDiv.className = 'answer-content';
+                answerDiv.textContent = event.data.answer;
+                eventContent.appendChild(answerDiv);
+            } else {
+                eventContent.textContent = getEventSummary(event);
+            }
             
             eventDiv.appendChild(eventHeader);
             eventDiv.appendChild(eventTime);
@@ -223,7 +233,7 @@ DEMO_HTML = """
                 case 'agent_decision':
                     return event.data.thinking || event.data.decision || '';
                 case 'answer_generated':
-                    return event.data.answer ? event.data.answer.substring(0, 200) + '...' : '';
+                    return '✅ 答案已生成，请查看下方详细内容';
                 default:
                     return JSON.stringify(event.data);
             }
@@ -304,20 +314,20 @@ async def stream_search(request: SearchRequest):
             
             # 生成答案
             if result.get('selected_documents'):
-                yield f"data: {json.dumps({'event_type': 'answer_generation_start', 'timestamp': datetime.now().isoformat(), 'data': {'message': '正在生成答案...'}})}\\n\\n"
+                yield f"data: {json.dumps({'event_type': 'answer_generation_start', 'timestamp': datetime.now().isoformat(), 'data': {'message': '正在生成答案...'}})}\n\n"
                 
                 answer = service.synthesize_answer(
                     question=request.question,
                     selected_docs=result['selected_documents']
                 )
                 
-                yield f"data: {json.dumps({'event_type': 'answer_generated', 'timestamp': datetime.now().isoformat(), 'data': {'answer': answer}})}\\n\\n"
+                yield f"data: {json.dumps({'event_type': 'answer_generated', 'timestamp': datetime.now().isoformat(), 'data': {'answer': answer}})}\n\n"
             
         except Exception as e:
-            yield f"data: {json.dumps({'event_type': 'error', 'timestamp': datetime.now().isoformat(), 'data': {'message': str(e)}})}\\n\\n"
+            yield f"data: {json.dumps({'event_type': 'error', 'timestamp': datetime.now().isoformat(), 'data': {'message': str(e)}})}\n\n"
         
         # 发送完成信号
-        yield "data: [DONE]\\n\\n"
+        yield "data: [DONE]\n\n"
     
     return StreamingResponse(
         generate(),

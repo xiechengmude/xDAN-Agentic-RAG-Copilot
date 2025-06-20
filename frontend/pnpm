@@ -1,0 +1,4 @@
+Progress: resolved 0, reused 1, downloaded 0, added 0
+ ERR_PNPM_SPEC_NOT_SUPPORTED_BY_ANY_RESOLVER  = isn't supported by any available resolver.
+
+This error happened while installing a direct dependency of /Users/gump_m2/CascadeProjects/ragflow-api-client/frontend
