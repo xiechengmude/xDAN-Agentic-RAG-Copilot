@@ -1,25 +1,43 @@
-# xDAN-Agentic-RAG-Copilot
+# RAGFlow API Client
 
-基于S3（Search-Select-Synthesize）框架的智能RAG系统，提供透明的搜索决策过程可视化。
+基于RAGFlow API的知识库管理系统，提供完整的文档处理、检索和对话功能。
 
 ## 🌟 特性
 
-- **S3搜索框架**：基于智能体的多轮迭代搜索策略
-- **决策透明化**：实时展示AI的思考和决策过程
-- **流式响应**：使用Server-Sent Events提供实时反馈
-- **现代化前端**：React + TypeScript + Tailwind CSS
+- **知识库管理**：完整的知识库CRUD操作
+- **文档处理**：支持文档上传、解析、状态跟踪
+- **实时通信**：使用Server-Sent Events提供实时状态更新
+- **对话功能**：基于知识库的智能问答
+- **现代化前端**：Vue 3 + TypeScript + Vite
 - **完整API文档**：FastAPI自动生成的交互式文档
 
 ## 🚀 快速开始
 
+### 环境要求
+
+- Python 3.8+
+- Node.js 16+
+- uv (Python包管理器)
+
 ### 1. 克隆仓库
 ```bash
-git clone https://github.com/xiechengmude/xDAN-Agentic-RAG-Copilot.git
-cd xDAN-Agentic-RAG-Copilot
+git clone <repository-url>
+cd ragflow-api-client
 ```
 
-### 2. 安装依赖
+### 2. 环境管理
+
+本项目使用 **uv** 进行Python环境和依赖管理：
+
 ```bash
+# 安装uv (如果尚未安装)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# 创建虚拟环境并安装依赖
+uv venv
+source .venv/bin/activate  # Linux/macOS
+# 或 .venv\Scripts\activate  # Windows
+
 # 安装Python依赖
 uv pip install -r requirements.txt
 
@@ -30,64 +48,140 @@ cd ..
 ```
 
 ### 3. 配置环境
-复制配置模板并填入您的API密钥：
+
+创建配置文件并设置RAGFlow API连接：
+
 ```bash
-cp config/settings_template.py config/settings.py
+# 复制配置模板
+cp config.example.json config.json
+
+# 编辑配置文件，填入RAGFlow服务器信息
+{
+  "ragflow": {
+    "base_url": "http://your-ragflow-server:9380",
+    "api_key": "your-api-key",
+    "version": "v1"
+  }
+}
 ```
 
 ### 4. 启动服务
-```bash
-# 启动所有服务
-./start_server.sh start
 
-# 或分别启动
-./start_server.sh api start      # 仅启动API
-./start_server.sh frontend start  # 仅启动前端
+```bash
+# 激活虚拟环境
+source .venv/bin/activate
+
+# 启动后端API服务
+uvicorn api:app --host 0.0.0.0 --port 8001 --reload
+
+# 新终端启动前端服务
+cd frontend
+npm run dev
+```
+
+### 5. 测试和开发
+
+```bash
+# 运行SSE单元测试
+uv pip install pytest pytest-asyncio httpx requests psutil vitest
+python3 run_sse_tests.py
+
+# 前端测试
+cd frontend
+npm run test
+
+# 类型检查
+npm run type-check
+
+# 代码格式化
+npm run lint
 ```
 
 ## 📍 访问地址
 
-- **前端应用**: http://localhost:5173/app/
-- **API服务**: http://localhost:8050
-- **API文档**: http://localhost:8050/docs
+- **前端应用**: http://localhost:5173
+- **后端API**: http://localhost:8001
+- **API文档**: http://localhost:8001/docs
+- **演示服务**: http://localhost:8050 (如果运行)
 
 ## 🏗️ 架构说明
 
-### S3搜索框架
-1. **Search（搜索）**: 基于问题进行初始文档检索
-2. **Select（选择）**: 智能体分析并选择相关文档
-3. **Synthesize（综合）**: 基于选中文档生成最终答案
+### 系统架构
+```
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│   Frontend      │    │   Backend API    │    │   RAGFlow       │
+│   (Vue 3)       │◄──►│   (FastAPI)      │◄──►│   Server        │
+│   Port: 5173    │    │   Port: 8001     │    │   Port: 9380    │
+└─────────────────┘    └──────────────────┘    └─────────────────┘
+```
+
+### 核心功能模块
+
+1. **知识库管理**
+   - 创建、查询、更新、删除知识库
+   - 知识库列表和详情获取
+
+2. **文档管理** 
+   - 文档上传和解析
+   - 文档状态实时跟踪
+   - 文档下载和删除
+
+3. **对话系统**
+   - 基于知识库的智能问答
+   - 流式对话响应
+   - 聊天历史管理
+
+4. **实时通信**
+   - Server-Sent Events (SSE)
+   - 文档处理进度推送
+   - 批量状态监控
 
 ### 核心组件
-- `demo_server_simple.py`: API服务器，提供SSE流式接口
-- `enhanced_s3_rag_service_v2.py`: S3搜索框架核心实现
-- `frontend/`: React前端应用
-- `start_server.sh`: 服务管理脚本
+
+- `api.py`: FastAPI主服务，提供RESTful API
+- `src/api/sse_endpoints.py`: SSE实时通信端点
+- `src/clients/ragflow_client.py`: RAGFlow API客户端封装
+- `frontend/`: Vue 3前端应用
+- `tests/`: 完整的单元测试和集成测试
 
 ## 🛠️ 开发指南
 
 ### API开发
-查看 [API文档](docs/api_documentation.md) 了解接口详情。
+
+查看接口文档：
+- [知识库管理系统接口清单](docs/知识库管理系统接口清单.md)
+- [RAGFlow API文档](docs/ragflow_half2.md)
 
 ### 前端开发
+
 ```bash
 cd frontend
-npm run dev  # 开发模式
-npm run build  # 生产构建
+npm run dev        # 开发模式
+npm run build      # 生产构建
+npm run preview    # 预览构建结果
+npm run type-check # TypeScript类型检查
+npm run lint       # 代码检查
 ```
 
-### 服务管理
+### 测试开发
+
 ```bash
-./start_server.sh status   # 查看服务状态
-./start_server.sh restart  # 重启所有服务
-./start_server.sh stop     # 停止所有服务
+# 后端测试
+python3 run_sse_tests.py
+
+# 前端测试  
+cd frontend && npm run test
+
+# 特定测试标记
+uv run pytest -m sse        # 仅SSE测试
+uv run pytest -m integration # 仅集成测试
 ```
 
 ## 📚 文档
 
-- [API对接文档](docs/api_documentation.md)
-- [服务部署指南](docs/service_deployment.md)
-- [搜索模型说明](docs/search_model_example.md)
+- [知识库管理系统接口清单](docs/知识库管理系统接口清单.md)
+- [RAGFlow API参考](docs/ragflow_half2.md)
+- [知识库接口页面需求](docs/知识库接口页面需求.md)
 
 ## 🤝 贡献
 

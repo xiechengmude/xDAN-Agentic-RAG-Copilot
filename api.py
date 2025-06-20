@@ -8,6 +8,7 @@ from src.core.models import (
     DatasetResponse, DocumentListRequest, RetrievalRequest, ErrorResponse
 )
 from src.clients.ragflow_client import RAGFlowClient
+from src.api.sse_endpoints import router as sse_router
 import os
 from dotenv import load_dotenv
 
@@ -30,6 +31,9 @@ ragflow_client = RAGFlowClient()
 # 依赖项：获取 RAGFlow 客户端
 def get_ragflow_client():
     return ragflow_client
+
+# 注册 SSE 路由
+app.include_router(sse_router)
 
 # =============== OpenAI 兼容 API ===============
 
