@@ -49,20 +49,27 @@ cd ..
 
 ### 3. 配置环境
 
-创建配置文件并设置RAGFlow API连接：
+项目使用 `.env` 文件进行环境配置：
 
 ```bash
-# 复制配置模板
-cp config.example.json config.json
+# 复制环境变量模板
+cp .env.example .env
 
-# 编辑配置文件，填入RAGFlow服务器信息
-{
-  "ragflow": {
-    "base_url": "http://your-ragflow-server:9380",
-    "api_key": "your-api-key",
-    "version": "v1"
-  }
-}
+# 编辑 .env 文件，配置RAGFlow服务器信息
+RAGFLOW_API_URL=http://your-ragflow-server:9380
+RAGFLOW_API_KEY=your-api-key
+
+# S3框架模型配置（可选）
+S3_SEARCH_MODEL_NAME=your-search-model
+S3_SEARCH_MODEL_URL=http://your-search-model-url/v1
+S3_SEARCH_MODEL_API_KEY=your-search-api-key
+
+S3_GENERATOR_MODEL_NAME=your-generator-model
+S3_GENERATOR_MODEL_URL=http://your-generator-model-url/v1
+S3_GENERATOR_API_KEY=your-generator-api-key
+
+# 默认数据集ID（可选）
+DEFAULT_DATASET_ID=your-default-dataset-id
 ```
 
 ### 4. 启动服务
