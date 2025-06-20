@@ -255,6 +255,76 @@ async def parse_documents(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/v1/datasets/{dataset_id}/documents/{document_id}/download")
+async def download_document(
+    dataset_id: str,
+    document_id: str,
+    client: RAGFlowClient = Depends(get_ragflow_client)
+):
+    """
+    下载文档原始文件
+    """
+    try:
+        file_content = client.download_document(
+            dataset_id=dataset_id,
+            document_id=document_id
+        )
+        
+        # 获取文档信息以获取文件名
+        doc_info = client.get_document_status(dataset_id, document_id)
+        filename = "document"
+        if doc_info and 'name' in doc_info:
+            filename = doc_info['name']
+        
+        return Response(
+            content=file_content,
+            media_type="application/octet-stream",
+            headers={
+                "Content-Disposition": f"attachment; filename={filename}"
+            }
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/v1/datasets/{dataset_id}/documents/{document_id}/status", response_model=Dict)
+async def get_document_status(
+    dataset_id: str,
+    document_id: str,
+    client: RAGFlowClient = Depends(get_ragflow_client)
+):
+    """
+    获取文档状态信息
+    """
+    try:
+        status = client.get_document_status(
+            dataset_id=dataset_id,
+            document_id=document_id
+        )
+        
+        if status is None:
+            raise HTTPException(status_code=404, detail="文档不存在")
+        
+        # 提取关键状态信息
+        return {
+            "code": 0,
+            "data": {
+                "id": status.get("id"),
+                "name": status.get("name"),
+                "status": status.get("status", ""),
+                "progress": status.get("progress", 0.0),
+                "progress_msg": status.get("progress_msg", ""),
+                "process_begin_at": status.get("process_begin_at"),
+                "process_duration": status.get("process_duation", 0.0),
+                "chunk_count": status.get("chunk_count", 0)
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 # =============== 检索 API ===============
 
 @app.post("/v1/retrieval", response_model=Dict)

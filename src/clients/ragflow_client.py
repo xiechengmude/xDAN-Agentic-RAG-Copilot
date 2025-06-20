@@ -302,6 +302,62 @@ class RAGFlowClient:
         
         return self._make_request("POST", endpoint, data)
     
+    def download_document(self, dataset_id: str, document_id: str) -> bytes:
+        """
+        下载文档的原始文件
+        
+        Args:
+            dataset_id: 数据集ID
+            document_id: 文档ID
+            
+        Returns:
+            文件内容的字节数据
+        """
+        endpoint = f"/api/v1/datasets/{dataset_id}/documents/{document_id}"
+        
+        response = self.session.get(
+            f"{self.base_url}{endpoint}",
+            headers=self.headers,
+            timeout=self.timeout
+        )
+        
+        # 如果响应是JSON格式（错误响应），则抛出异常
+        try:
+            error_data = response.json()
+            if 'code' in error_data and error_data['code'] != 0:
+                raise ValueError(f"下载失败: {error_data.get('message', 'Unknown error')}")
+        except ValueError:
+            # 不是JSON响应，说明是文件内容
+            pass
+        
+        response.raise_for_status()
+        return response.content
+    
+    def get_document_status(self, dataset_id: str, document_id: str) -> Optional[Dict]:
+        """
+        获取单个文档的状态信息
+        
+        Args:
+            dataset_id: 数据集ID
+            document_id: 文档ID
+            
+        Returns:
+            文档信息字典，包含status、progress等字段，如果文档不存在则返回None
+        """
+        # 通过列表接口获取特定文档
+        response = self.list_documents(
+            dataset_id=dataset_id,
+            id=document_id,
+            page_size=1
+        )
+        
+        if response.get('code') == 0 and response.get('data'):
+            documents = response['data']
+            if documents and len(documents) > 0:
+                return documents[0]
+        
+        return None
+    
     # =============== 检索 ===============
     
     def retrieve_chunks(self, question: str, dataset_ids: List[str] = None, 
