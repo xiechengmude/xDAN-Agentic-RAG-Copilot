@@ -74,29 +74,47 @@ cd ..
 
 ### 4. 启动服务
 
-#### 方式1：分别启动（推荐开发）
+#### 方式1：使用启动脚本（推荐）
 ```bash
-# 终端1：启动后端API服务
+# 启动所有服务（交互式选择）
+./start_server.sh start
+
+# 查看服务状态
+./start_server.sh status
+
+# 停止所有服务
+./start_server.sh stop
+# 或
+./stop_server.sh
+
+# 重启服务
+./start_server.sh restart
+```
+
+#### 方式2：单独管理服务
+```bash
+# 仅启动API代理服务（核心服务）
+./start_server.sh api-proxy start
+
+# 仅启动搜索演示服务
+./start_server.sh demo start
+
+# 仅启动前端开发服务
+./start_server.sh frontend start
+```
+
+#### 方式3：手动启动
+```bash
+# 启动API代理服务
 source venv/bin/activate
+python api_proxy.py
+
+# 启动搜索演示服务
 python demo_server_simple.py
 
-# 终端2：启动前端服务
+# 启动前端服务
 cd frontend
 npm run dev
-```
-
-#### 方式2：完整API服务
-```bash
-# 启动完整的RAGFlow API代理服务（推荐）
-source venv/bin/activate
-python start_ragflow_api.py
-```
-
-#### 方式3：搜索可视化服务
-```bash
-# 仅启动搜索可视化演示
-source venv/bin/activate
-python demo_server_simple.py
 ```
 
 ### 5. 访问应用
