@@ -77,9 +77,16 @@ start_api_proxy() {
     # 确保日志目录存在
     mkdir -p logs
     
-    # 激活虚拟环境并启动服务
-    source venv/bin/activate
-    nohup python api_proxy.py > logs/api_proxy_$(date +%Y%m%d_%H%M%S).log 2>&1 &
+    # 检查并激活虚拟环境
+    if [ -d ".venv" ]; then
+        source .venv/bin/activate
+    elif [ -d "venv" ]; then
+        source venv/bin/activate
+    else
+        echo -e "${YELLOW}未找到虚拟环境，使用系统Python${NC}"
+    fi
+    
+    nohup python3 api_proxy.py > logs/api_proxy_$(date +%Y%m%d_%H%M%S).log 2>&1 &
     
     # 等待服务启动
     sleep 3
@@ -103,9 +110,16 @@ start_demo_service() {
     # 确保日志目录存在
     mkdir -p logs
     
-    # 激活虚拟环境并启动服务
-    source venv/bin/activate
-    nohup python demo_server_simple.py > logs/demo_server_$(date +%Y%m%d_%H%M%S).log 2>&1 &
+    # 检查并激活虚拟环境
+    if [ -d ".venv" ]; then
+        source .venv/bin/activate
+    elif [ -d "venv" ]; then
+        source venv/bin/activate
+    else
+        echo -e "${YELLOW}未找到虚拟环境，使用系统Python${NC}"
+    fi
+    
+    nohup python3 demo_server_simple.py > logs/demo_server_$(date +%Y%m%d_%H%M%S).log 2>&1 &
     
     # 等待服务启动
     sleep 3
