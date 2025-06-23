@@ -1,4 +1,4 @@
-# RAGFlow API接口对接文档
+# xDAN Rag Copilot API Service 接口对接文档
 
 ## 📋 目录
 - [基础配置](#基础配置)
@@ -17,10 +17,33 @@
 ## 基础配置
 
 ### API基础信息
-- **Base URL**: `http://150.109.16.195:7080`
+- **本地开发**:
+  - 代理服务 Base URL: `http://localhost:8001` (xDAN Rag Copilot API Service)
+  - 前端开发服务: `http://localhost:5173`
+- **远程部署**:
+  - 代理服务 Base URL: `http://150.109.16.195:8001`
+  - 前端应用: `http://150.109.16.195` (需配置nginx)
+- **RAGFlow服务 Base URL**: `http://150.109.16.195:7080` (后端实际服务)
 - **API版本**: `v1`
 - **协议**: `HTTP/HTTPS`
 - **数据格式**: `JSON` / `FormData` (文件上传)
+
+### 服务说明
+xDAN Rag Copilot API Service 是一个完整的API代理服务，提供了标准化的接口访问。建议使用代理服务地址进行开发和集成。
+
+### Swagger文档
+- **本地访问**: http://localhost:8001/docs
+- **远程访问**: http://150.109.16.195:8001/docs
+- **OpenAPI规范**: `/openapi.json`
+- 可通过Swagger UI直接测试所有接口
+
+### 端口配置说明
+| 服务 | 本地端口 | 远程端口 | 说明 |
+|------|----------|----------|------|
+| 前端应用 | 5173 | 80/443 | Vite开发服务器 / Nginx |
+| API代理服务 | 8001 | 8001 | xDAN Rag Copilot API Service |
+| RAGFlow服务 | - | 7080 | 原始RAGFlow API |
+| 搜索演示 | 8050 | 8050 | 可选的搜索可视化服务 |
 
 ### 请求头配置
 ```http
@@ -393,11 +416,11 @@ data:{"code": 0, "message": "", "data": true}
 
 ### 2. 前端处理示例
 ```javascript
-const response = await fetch('/api/v1/chats/chat_id/completions', {
+const response = await fetch('http://localhost:8001/api/v1/chats/chat_id/completions', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
-    'Authorization': 'Bearer token'
+    'Authorization': 'Bearer ragflow-g4ZWE3OTNhNDUxYTExZjA4MTljMDI0Mm'
   },
   body: JSON.stringify({ content: '你好' })
 });
@@ -460,7 +483,7 @@ while (true) {
 
 #### 1. 创建知识库
 ```bash
-curl -X POST "http://150.109.16.195:7080/api/v1/datasets" \
+curl -X POST "http://localhost:8001/api/v1/datasets" \
   -H "Authorization: Bearer ragflow-g4ZWE3OTNhNDUxYTExZjA4MTljMDI0Mm" \
   -H "Content-Type: application/json" \
   -d '{
@@ -473,7 +496,7 @@ curl -X POST "http://150.109.16.195:7080/api/v1/datasets" \
 
 #### 2. 上传文档
 ```bash
-curl -X POST "http://150.109.16.195:7080/api/v1/datasets/{dataset_id}/documents" \
+curl -X POST "http://localhost:8001/api/v1/datasets/{dataset_id}/documents" \
   -H "Authorization: Bearer ragflow-g4ZWE3OTNhNDUxYTExZjA4MTljMDI0Mm" \
   -F "file=@test_document.txt"
 ```
@@ -481,13 +504,13 @@ curl -X POST "http://150.109.16.195:7080/api/v1/datasets/{dataset_id}/documents"
 #### 3. 等待文档解析
 ```bash
 # 检查文档状态
-curl -X GET "http://150.109.16.195:7080/api/v1/datasets/{dataset_id}/documents/{doc_id}" \
+curl -X GET "http://localhost:8001/api/v1/datasets/{dataset_id}/documents/{doc_id}" \
   -H "Authorization: Bearer ragflow-g4ZWE3OTNhNDUxYTExZjA4MTljMDI0Mm"
 ```
 
 #### 4. 创建对话
 ```bash
-curl -X POST "http://150.109.16.195:7080/api/v1/chats" \
+curl -X POST "http://localhost:8001/api/v1/chats" \
   -H "Authorization: Bearer ragflow-g4ZWE3OTNhNDUxYTExZjA4MTljMDI0Mm" \
   -H "Content-Type: application/json" \
   -d '{
@@ -498,7 +521,7 @@ curl -X POST "http://150.109.16.195:7080/api/v1/chats" \
 
 #### 5. 发送消息
 ```bash
-curl -X POST "http://150.109.16.195:7080/api/v1/chats/{chat_id}/completions" \
+curl -X POST "http://localhost:8001/api/v1/chats/{chat_id}/completions" \
   -H "Authorization: Bearer ragflow-g4ZWE3OTNhNDUxYTExZjA4MTljMDI0Mm" \
   -H "Content-Type: application/json" \
   -d '{
@@ -508,8 +531,8 @@ curl -X POST "http://150.109.16.195:7080/api/v1/chats/{chat_id}/completions" \
 
 #### 6. 检索测试
 ```bash
-curl -X POST "http://150.109.16.195:7080/api/v1/retrieval" \
-  -H "Authorization: Bearer ragflow-g4ZWE3OTNhNDUxYTExZjA4MTljMDI0Mm" \
+curl -X POST "http://localhost:8001/api/v1/retrieval" \
+  -H "Authorization: Bearer ragflow-g4ZWE3OTNhNDUxYTExZjA8MTljMDI0Mm" \
   -H "Content-Type: application/json" \
   -d '{
     "question": "文档中的关键信息",
@@ -548,6 +571,7 @@ curl -X POST "http://150.109.16.195:7080/api/v1/retrieval" \
 
 ---
 
-**文档版本**: v1.0  
+**文档版本**: v1.1  
 **最后更新**: 2025-06-23  
-**测试状态**: ✅ 已验证所有接口
+**测试状态**: ✅ 已验证所有接口  
+**服务名称**: xDAN Rag Copilot API Service

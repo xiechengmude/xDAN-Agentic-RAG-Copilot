@@ -85,9 +85,16 @@ cd frontend
 npm run dev
 ```
 
-#### 方式2：单一后端服务
+#### 方式2：完整API服务
 ```bash
-# 仅启动搜索可视化服务
+# 启动完整的RAGFlow API代理服务（推荐）
+source venv/bin/activate
+python start_ragflow_api.py
+```
+
+#### 方式3：搜索可视化服务
+```bash
+# 仅启动搜索可视化演示
 source venv/bin/activate
 python demo_server_simple.py
 ```
@@ -95,6 +102,7 @@ python demo_server_simple.py
 ### 5. 访问应用
 
 - **前端应用**: http://localhost:5173
+- **完整API服务**: http://localhost:8001 (Swagger文档: http://localhost:8001/docs)
 - **搜索可视化**: http://localhost:8050
 - **API文档**: 查看 `docs/API接口对接文档.md`
 
@@ -103,10 +111,17 @@ python demo_server_simple.py
 ### 系统架构
 ```
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   Frontend      │    │   Demo Server    │    │   RAGFlow       │
+│   Frontend      │    │   API Proxy      │    │   RAGFlow       │
 │   (React 19)    │◄──►│   (FastAPI)      │◄──►│   Server        │
-│   Port: 5173    │    │   Port: 8050     │    │   Port: 7080    │
+│   Port: 5173    │    │   Port: 8001     │    │   Port: 7080    │
 └─────────────────┘    └──────────────────┘    └─────────────────┘
+                              ▲
+                              │
+                       ┌──────────────────┐
+                       │   Demo Server    │
+                       │   (Visualization)│
+                       │   Port: 8050     │
+                       └──────────────────┘
 ```
 
 ### 核心功能模块
