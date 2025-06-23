@@ -95,7 +95,7 @@ fi
 # 5. 检查端口
 echo
 echo -e "${BLUE}[5] 端口检查${NC}"
-for port in 8001 8050 5173; do
+for port in 8050 8051 5173; do
     if lsof -i:$port &>/dev/null; then
         echo -e "${YELLOW}! 端口 $port 已被占用${NC}"
         lsof -i:$port | grep LISTEN | head -1

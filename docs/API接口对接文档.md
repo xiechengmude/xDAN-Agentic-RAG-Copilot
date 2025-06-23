@@ -18,10 +18,10 @@
 
 ### API基础信息
 - **本地开发**:
-  - 代理服务 Base URL: `http://localhost:8001` (xDAN Rag Copilot API Service)
+  - 代理服务 Base URL: `http://localhost:8050` (xDAN Rag Copilot API Service)
   - 前端开发服务: `http://localhost:5173`
 - **远程部署**:
-  - 代理服务 Base URL: `http://150.109.16.195:8001`
+  - 代理服务 Base URL: `http://150.109.16.195:8050`
   - 前端应用: `http://150.109.16.195` (需配置nginx)
 - **RAGFlow服务 Base URL**: `http://150.109.16.195:7080` (后端实际服务)
 - **API版本**: `v1`
@@ -32,8 +32,8 @@
 xDAN Rag Copilot API Service 是一个完整的API代理服务，提供了标准化的接口访问。建议使用代理服务地址进行开发和集成。
 
 ### Swagger文档
-- **本地访问**: http://localhost:8001/docs
-- **远程访问**: http://150.109.16.195:8001/docs
+- **本地访问**: http://localhost:8050/docs
+- **远程访问**: http://150.109.16.195:8050/docs
 - **OpenAPI规范**: `/openapi.json`
 - 可通过Swagger UI直接测试所有接口
 
@@ -41,9 +41,9 @@ xDAN Rag Copilot API Service 是一个完整的API代理服务，提供了标准
 | 服务 | 本地端口 | 远程端口 | 说明 |
 |------|----------|----------|------|
 | 前端应用 | 5173 | 80/443 | Vite开发服务器 / Nginx |
-| API代理服务 | 8001 | 8001 | xDAN Rag Copilot API Service |
+| API代理服务 | 8050 | 8050 | xDAN Rag Copilot API Service |
 | RAGFlow服务 | - | 7080 | 原始RAGFlow API |
-| 搜索演示 | 8050 | 8050 | 可选的搜索可视化服务 |
+| 搜索演示 | 8051 | 8051 | 可选的搜索可视化服务 |
 
 ### 请求头配置
 ```http

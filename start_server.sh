@@ -94,9 +94,9 @@ start_api_proxy() {
     # 检查服务是否成功启动
     if check_api_proxy_running; then
         echo -e "${GREEN}✅ API代理服务启动成功！${NC}"
-        echo -e "${GREEN}API访问地址: http://localhost:8001${NC}"
-        echo -e "${GREEN}API文档: http://localhost:8001/docs${NC}"
-        echo -e "${GREEN}健康检查: http://localhost:8001/health${NC}"
+        echo -e "${GREEN}API访问地址: http://localhost:8050${NC}"
+        echo -e "${GREEN}API文档: http://localhost:8050/docs${NC}"
+        echo -e "${GREEN}健康检查: http://localhost:8050/health${NC}"
     else
         echo -e "${RED}❌ API代理服务启动失败，请检查日志文件${NC}"
         return 1
@@ -127,7 +127,7 @@ start_demo_service() {
     # 检查服务是否成功启动
     if check_demo_running; then
         echo -e "${GREEN}✅ 搜索演示服务启动成功！${NC}"
-        echo -e "${GREEN}演示访问地址: http://localhost:8050${NC}"
+        echo -e "${GREEN}演示访问地址: http://localhost:8051${NC}"
     else
         echo -e "${RED}❌ 搜索演示服务启动失败，请检查日志文件${NC}"
         return 1
@@ -237,7 +237,7 @@ case "$1" in
         # API代理服务状态
         echo -e "${BLUE}[API代理服务]${NC}"
         if check_api_proxy_running; then
-            echo -e "${GREEN}✅ 运行中${NC} - http://localhost:8001"
+            echo -e "${GREEN}✅ 运行中${NC} - http://localhost:8050"
             ps aux | grep api_proxy.py | grep -v grep | head -1
         else
             echo -e "${RED}❌ 未运行${NC}"
@@ -248,7 +248,7 @@ case "$1" in
         # 搜索演示服务状态
         echo -e "${BLUE}[搜索演示服务]${NC}"
         if check_demo_running; then
-            echo -e "${GREEN}✅ 运行中${NC} - http://localhost:8050"
+            echo -e "${GREEN}✅ 运行中${NC} - http://localhost:8051"
             ps aux | grep demo_server_simple.py | grep -v grep | head -1
         else
             echo -e "${RED}❌ 未运行${NC}"

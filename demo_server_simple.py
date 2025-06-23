@@ -341,7 +341,7 @@ async def stream_search(request: SearchRequest):
 if __name__ == "__main__":
     import uvicorn
     print("🚀 启动搜索过程可视化演示服务...")
-    print("📍 访问地址: http://localhost:8050")
+    print("📍 访问地址: http://localhost:8051")
     print("\n按 Ctrl+C 停止服务\n")
     
-    uvicorn.run(app, host="0.0.0.0", port=8050)
+    uvicorn.run(app, host="0.0.0.0", port=8051)

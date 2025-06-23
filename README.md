@@ -120,8 +120,8 @@ npm run dev
 ### 5. 访问应用
 
 - **前端应用**: http://localhost:5173
-- **完整API服务**: http://localhost:8001 (Swagger文档: http://localhost:8001/docs)
-- **搜索可视化**: http://localhost:8050
+- **完整API服务**: http://localhost:8050 (Swagger文档: http://localhost:8050/docs)
+- **搜索可视化**: http://localhost:8051
 - **API文档**: 查看 `docs/API接口对接文档.md`
 
 ## 🏗️ 架构说明
@@ -131,14 +131,14 @@ npm run dev
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
 │   Frontend      │    │   API Proxy      │    │   RAGFlow       │
 │   (React 19)    │◄──►│   (FastAPI)      │◄──►│   Server        │
-│   Port: 5173    │    │   Port: 8001     │    │   Port: 7080    │
+│   Port: 5173    │    │   Port: 8050     │    │   Port: 7080    │
 └─────────────────┘    └──────────────────┘    └─────────────────┘
                               ▲
                               │
                        ┌──────────────────┐
                        │   Demo Server    │
                        │   (Visualization)│
-                       │   Port: 8050     │
+                       │   Port: 8051     │
                        └──────────────────┘
 ```
 
