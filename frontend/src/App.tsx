@@ -132,7 +132,7 @@ export default function App() {
       // 创建新的 AbortController
       abortControllerRef.current = new AbortController();
       
-      const response = await fetch("http://192.168.31.18:8050/api/search/stream", {
+      const response = await fetch("http://localhost:8050/api/search/stream", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

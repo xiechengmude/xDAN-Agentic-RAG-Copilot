@@ -15,6 +15,10 @@ import logging
 from src.clients.ragflow_sdk_wrapper import RAGFlowSDKWrapper
 from src.clients.ragflow_client import RAGFlowClient
 from src.clients.llm_client import LLMClient
+try:
+    from src.clients.xdan_rag_client import XDANRagClient
+except ImportError:
+    XDANRagClient = None
 from config.settings import (
     RAGFLOW_API_URL, RAGFLOW_API_KEY, DEFAULT_DATASET_ID,
     S3_SEARCH_MODEL_NAME, S3_SEARCH_MODEL_URL, S3_SEARCH_API_KEY,
@@ -76,7 +80,7 @@ class EnhancedS3RAGServiceV2:
     增强版S3 RAG服务 - 带详细搜索过程记录
     """
     
-    def __init__(self, ragflow_client: Union[RAGFlowSDKWrapper, RAGFlowClient], 
+    def __init__(self, ragflow_client, 
                  search_llm_client: LLMClient = None, 
                  generator_llm_client: LLMClient = None):
         self.ragflow_client = ragflow_client
@@ -85,9 +89,12 @@ class EnhancedS3RAGServiceV2:
         self.search_llm_client = search_llm_client or get_search_llm_client()
         self.generator_llm_client = generator_llm_client or get_generator_llm_client()
         
+        # 检测客户端类型
         self.is_sdk_mode = isinstance(ragflow_client, RAGFlowSDKWrapper)
+        self.is_xdan_client = XDANRagClient and isinstance(ragflow_client, XDANRagClient)
         
-        logger.info(f"Enhanced S3 RAG Service V2 初始化 - SDK模式: {self.is_sdk_mode}")
+        client_type = "xDAN Client" if self.is_xdan_client else ("SDK模式" if self.is_sdk_mode else "HTTP模式")
+        logger.info(f"Enhanced S3 RAG Service V2 初始化 - 客户端类型: {client_type}")
         logger.info(f"Search Model: {S3_SEARCH_MODEL_NAME}")
         logger.info(f"Generator Model: {S3_GENERATOR_MODEL_NAME}")
     
@@ -163,21 +170,14 @@ class EnhancedS3RAGServiceV2:
         try:
             logger.info(f"执行搜索步骤 - 问题: {question}, 数据集: {dataset_ids}, top_k: {top_k}")
             
-            if self.is_sdk_mode:
-                response = self.ragflow_client.retrieve_chunks(
+            # 使用兼容方法调用
+            if self.is_xdan_client and hasattr(self.ragflow_client, 'retrieve_chunks_compatible'):
+                response = self.ragflow_client.retrieve_chunks_compatible(
                     question=question,
                     dataset_ids=dataset_ids,
                     top_k=top_k,
                     similarity_threshold=similarity_threshold
                 )
-                logger.info(f"SDK检索响应代码: {response.get('code')}")
-                if response.get('code') == 0:
-                    chunks = response.get('data', {}).get('chunks', [])
-                    logger.info(f"SDK检索成功，找到 {len(chunks)} 个chunks")
-                    return chunks, True
-                else:
-                    logger.error(f"SDK检索失败: {response.get('message')}")
-                    return [], False
             else:
                 response = self.ragflow_client.retrieve_chunks(
                     question=question,
@@ -185,11 +185,15 @@ class EnhancedS3RAGServiceV2:
                     top_k=top_k,
                     similarity_threshold=similarity_threshold
                 )
-                if response.get('code') == 0:
-                    return response.get('data', {}).get('chunks', []), True
-                else:
-                    logger.error(f"HTTP检索失败: {response.get('message')}")
-                    return [], False
+            
+            logger.info(f"检索响应代码: {response.get('code')}")
+            if response.get('code') == 0:
+                chunks = response.get('data', {}).get('chunks', [])
+                logger.info(f"检索成功，找到 {len(chunks)} 个chunks")
+                return chunks, True
+            else:
+                logger.error(f"检索失败: {response.get('message')}")
+                return [], False
         except Exception as e:
             logger.error(f"搜索步骤失败: {e}")
             return [], False

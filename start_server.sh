@@ -10,7 +10,7 @@ NC='\033[0m' # No Color
 
 # 检查API服务是否已在运行
 check_api_running() {
-    if pgrep -f "demo_server_simple.py" > /dev/null; then
+    if pgrep -f "ragflow_search_server.py" > /dev/null || pgrep -f "xdan_rag_server.py" > /dev/null; then
         return 0
     else
         return 1
@@ -29,11 +29,13 @@ check_frontend_running() {
 # 停止API服务
 stop_api_service() {
     echo "正在停止API服务..."
-    pkill -f "demo_server_simple.py"
+    pkill -f "ragflow_search_server.py"
+    pkill -f "xdan_rag_server.py"
     sleep 2
     if check_api_running; then
         echo -e "${RED}API服务停止失败，尝试强制停止...${NC}"
-        pkill -9 -f "demo_server_simple.py"
+        pkill -9 -f "ragflow_search_server.py"
+        pkill -9 -f "xdan_rag_server.py"
         sleep 1
     fi
 }
@@ -54,8 +56,14 @@ start_api_service() {
     # 确保日志目录存在
     mkdir -p logs
     
-    # 使用nohup在后台启动服务
-    nohup uv run python demo_server_simple.py > logs/demo_server_$(date +%Y%m%d_%H%M%S).log 2>&1 &
+    # 检查是否有参数指定使用新版
+    if [ "$1" = "--new" ] || [ "$USE_NEW_API" = "true" ]; then
+        echo -e "${BLUE}使用xDAN RAG主服务器${NC}"
+        nohup uv run python xdan_rag_server.py > logs/xdan_rag_server_$(date +%Y%m%d_%H%M%S).log 2>&1 &
+    else
+        echo -e "${BLUE}使用RAGFlow搜索服务器${NC}"
+        nohup uv run python ragflow_search_server.py > logs/ragflow_search_server_$(date +%Y%m%d_%H%M%S).log 2>&1 &
+    fi
     
     # 等待服务启动
     sleep 3
@@ -142,7 +150,7 @@ case "$1" in
         # API服务状态
         if check_api_running; then
             echo -e "${GREEN}✅ API服务正在运行${NC}"
-            ps aux | grep demo_server_simple.py | grep -v grep | head -1
+            ps aux | grep -E "(ragflow_search_server|xdan_rag_server).py" | grep -v grep | head -1
         else
             echo -e "${RED}❌ API服务未运行${NC}"
         fi
@@ -165,7 +173,7 @@ case "$1" in
                 if check_api_running; then
                     echo -e "${RED}API服务已在运行中${NC}"
                 else
-                    start_api_service
+                    start_api_service "$3"
                 fi
                 ;;
             stop)
@@ -211,8 +219,12 @@ case "$1" in
         echo "  api      - 管理API服务 (start|stop|restart)"
         echo "  frontend - 管理前端服务 (start|stop|restart)"
         echo ""
+        echo "选项:"
+        echo "  --new    - 使用xDAN RAG主服务器（默认使用RAGFlow搜索服务器）"
+        echo ""
         echo "示例:"
         echo "  $0 start              # 启动所有服务"
+        echo "  $0 api start --new    # 启动新版API服务"
         echo "  $0 api stop           # 仅停止API服务"
         echo "  $0 frontend restart   # 仅重启前端服务"
         exit 1

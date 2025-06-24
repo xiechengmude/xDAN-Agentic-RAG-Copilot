@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 class LLMClient:
     """LLM 客户端，支持 OpenAI 兼容的 API"""
     
-    def __init__(self, base_url: str, api_key: Optional[str] = None, model_name: str = "xDAN-R2-Qwen3-14b-RagRL-step450-0618"):
+    def __init__(self, base_url: str, api_key: Optional[str] = None, model_name: Optional[str] = None):
         """
         初始化 LLM 客户端
         
@@ -26,7 +26,7 @@ class LLMClient:
         """
         self.base_url = base_url.rstrip('/')
         self.api_key = api_key
-        self.model_name = model_name
+        self.model_name = model_name if model_name else "default-model"
         self.session = requests.Session()
         
         # 设置默认请求头
