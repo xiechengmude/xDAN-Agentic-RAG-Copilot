@@ -739,7 +739,7 @@ async def retrieval(
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8050))  # 使用文档中指定的8050端口
     logger.info(f"启动 xDAN RAG Copilot API Proxy Server 在端口 {port}")
-    logger.info("Swagger文档地址: http://localhost:8050/docs")
+    logger.info(f"Swagger文档地址: http://localhost:{port}/docs")
     
     uvicorn.run(
         "xdan_api_proxy_server_fixed:app",
