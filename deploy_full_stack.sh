@@ -451,7 +451,7 @@ EOF
 # 检查并处理运行中的应用程序
 check_running_application() {
     # 检查是否有RAG服务在运行
-    if pgrep -f "uvicorn.*main:app" > /dev/null; then
+    if pgrep -f "main.py" > /dev/null || pgrep -f "uvicorn.*main:app" > /dev/null; then
         log_warning "检测到RAG服务正在运行"
         echo "当前运行的进程："
         ps aux | grep -E "(uvicorn.*main:app|python.*main\.py)" | grep -v grep
@@ -470,11 +470,12 @@ check_running_application() {
             # 强制关闭剩余进程
             pkill -f "uvicorn.*main:app" 2>/dev/null || true
             pkill -f "python.*main\.py" 2>/dev/null || true
+            pkill -f "main.py" 2>/dev/null || true
             
             # 等待进程完全关闭
             sleep 3
             
-            if pgrep -f "uvicorn.*main:app" > /dev/null; then
+            if pgrep -f "main.py" > /dev/null || pgrep -f "uvicorn.*main:app" > /dev/null; then
                 log_error "无法停止运行中的服务，请手动关闭后重试"
                 exit 1
             else
@@ -589,7 +590,7 @@ EOF
             log_info "启动RAG服务..."
             ./start_server.sh start
             sleep 3
-            if pgrep -f "uvicorn.*main:app" > /dev/null; then
+            if pgrep -f "main.py" > /dev/null || pgrep -f "uvicorn.*main:app" > /dev/null; then
                 log_success "RAG服务启动成功"
             else
                 log_warning "RAG服务启动可能失败，请检查日志"

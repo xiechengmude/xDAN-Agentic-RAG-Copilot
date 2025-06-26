@@ -12,7 +12,7 @@ NC='\033[0m' # No Color
 
 # 检查RAG API服务是否已在运行
 check_api_running() {
-    if pgrep -f "src/api/server.py" > /dev/null || pgrep -f "uvicorn.*main:app" > /dev/null; then
+    if pgrep -f "main.py" > /dev/null || pgrep -f "uvicorn.*main:app" > /dev/null; then
         return 0
     else
         return 1
@@ -40,12 +40,12 @@ check_frontend_running() {
 # 停止RAG API服务
 stop_api_service() {
     echo "正在停止RAG API服务..."
-    pkill -f "src/api/server.py"
+    pkill -f "main.py"
     pkill -f "uvicorn.*main:app"
     sleep 2
     if check_api_running; then
         echo -e "${RED}RAG API服务停止失败，尝试强制停止...${NC}"
-        pkill -9 -f "src/api/server.py"
+        pkill -9 -f "main.py"
         pkill -9 -f "uvicorn.*main:app"
         sleep 1
     fi
@@ -88,11 +88,8 @@ start_api_service() {
         echo -e "${YELLOW}未找到虚拟环境，使用系统Python${NC}"
     fi
     
-    # 检查Python模块路径
-    export PYTHONPATH="${PYTHONPATH}:$(pwd)"
-    
-    # 启动新架构的API服务
-    nohup uvicorn src.api.server:app --host 0.0.0.0 --port 8050 --log-level info > logs/api_server_$(date +%Y%m%d_%H%M%S).log 2>&1 &
+    # 启动新架构的API服务 (使用主入口文件)
+    nohup python3 main.py > logs/api_server_$(date +%Y%m%d_%H%M%S).log 2>&1 &
     
     # 等待服务启动
     sleep 5
@@ -246,7 +243,7 @@ case "$1" in
         echo -e "${BLUE}[RAG API服务]${NC}"
         if check_api_running; then
             echo -e "${GREEN}✅ 运行中${NC} - http://localhost:8050"
-            ps aux | grep -E "(src/api/server.py|uvicorn.*main:app)" | grep -v grep | head -1
+            ps aux | grep -E "(main.py|uvicorn.*main:app)" | grep -v grep | head -1
         else
             echo -e "${RED}❌ 未运行${NC}"
         fi
