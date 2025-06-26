@@ -68,6 +68,57 @@ check_root() {
     fi
 }
 
+# 检查现有安装状态
+check_existing_installation() {
+    log_step "检查现有安装状态..."
+    
+    POSTGRES_EXISTS=false
+    REDIS_EXISTS=false
+    DOCKER_INSTALLED=false
+    
+    # 检查Docker是否安装
+    if command -v docker &> /dev/null; then
+        DOCKER_INSTALLED=true
+        log_info "✓ Docker 已安装"
+        
+        # 检查PostgreSQL容器
+        if docker ps -a --format "table {{.Names}}" | grep -q "postgres-rag"; then
+            POSTGRES_EXISTS=true
+            if docker ps --format "table {{.Names}}" | grep -q "postgres-rag"; then
+                log_info "✓ PostgreSQL 容器 (postgres-rag) 已存在且运行中"
+            else
+                log_warning "! PostgreSQL 容器 (postgres-rag) 已存在但未运行"
+            fi
+        fi
+        
+        # 检查Redis容器
+        if docker ps -a --format "table {{.Names}}" | grep -q "redis-rag"; then
+            REDIS_EXISTS=true
+            if docker ps --format "table {{.Names}}" | grep -q "redis-rag"; then
+                log_info "✓ Redis 容器 (redis-rag) 已存在且运行中"
+            else
+                log_warning "! Redis 容器 (redis-rag) 已存在但未运行"
+            fi
+        fi
+    else
+        log_info "○ Docker 未安装"
+    fi
+    
+    # 检查Python虚拟环境
+    if [ -d ".venv" ] || [ -d "venv" ]; then
+        log_info "✓ Python 虚拟环境已存在"
+    else
+        log_info "○ Python 虚拟环境不存在"
+    fi
+    
+    # 检查配置文件
+    if [ -f ".env" ]; then
+        log_info "✓ .env 配置文件已存在"
+    else
+        log_info "○ .env 配置文件不存在"
+    fi
+}
+
 # 安装系统依赖
 install_system_dependencies() {
     log_step "安装系统依赖..."
@@ -75,16 +126,20 @@ install_system_dependencies() {
     case $OS in
         "debian")
             sudo apt-get update
-            sudo apt-get install -y curl wget gnupg2 software-properties-common apt-transport-https ca-certificates
+            sudo apt-get install -y curl wget gnupg2 software-properties-common apt-transport-https ca-certificates postgresql-client
             ;;
         "redhat")
             sudo yum update -y
-            sudo yum install -y curl wget gnupg2
+            sudo yum install -y curl wget gnupg2 postgresql
             ;;
         "macos")
             if ! command -v brew &> /dev/null; then
                 log_info "安装 Homebrew..."
                 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+            fi
+            # macOS通过Homebrew安装PostgreSQL客户端
+            if ! command -v psql &> /dev/null; then
+                brew install postgresql
             fi
             ;;
     esac
@@ -94,6 +149,17 @@ install_system_dependencies() {
 
 # 安装 PostgreSQL (使用Docker避免冲突)
 install_postgresql() {
+    if [ "$POSTGRES_EXISTS" = true ]; then
+        log_info "PostgreSQL 容器已存在，跳过安装"
+        
+        # 如果容器存在但未运行，启动它
+        if ! docker ps --format "table {{.Names}}" | grep -q "postgres-rag"; then
+            log_info "启动现有的 PostgreSQL 容器..."
+            docker start postgres-rag
+        fi
+        return 0
+    fi
+    
     log_step "安装 PostgreSQL (Docker容器: postgres-rag)..."
     
     # 检查Docker是否安装
@@ -102,16 +168,12 @@ install_postgresql() {
         exit 1
     fi
     
-    # 停止并删除现有的postgres-rag容器（如果存在）
-    docker stop postgres-rag 2>/dev/null || true
-    docker rm postgres-rag 2>/dev/null || true
-    
-    # 创建PostgreSQL数据目录
+    # 创建PostgreSQL数据目录（幂等操作）
     sudo mkdir -p /opt/ragflow-rag/postgres-data
-    sudo chown $USER:$USER /opt/ragflow-rag/postgres-data
+    sudo chown $USER:$USER /opt/ragflow-rag/postgres-data 2>/dev/null || true
     
     # 启动PostgreSQL容器
-    docker run -d \
+    if docker run -d \
         --name postgres-rag \
         --restart unless-stopped \
         -p 5433:5432 \
@@ -120,9 +182,14 @@ install_postgresql() {
         -e POSTGRES_USER=ragflow_user \
         -e POSTGRES_PASSWORD=ragflow123 \
         -e POSTGRES_INITDB_ARGS="--encoding=UTF-8 --lc-collate=C --lc-ctype=C" \
-        postgres:15-alpine
-    
-    log_success "PostgreSQL容器 (postgres-rag) 安装完成，端口: 5433"
+        postgres:15-alpine; then
+        
+        log_success "PostgreSQL容器 (postgres-rag) 安装完成，端口: 5433"
+        POSTGRES_EXISTS=true
+    else
+        log_error "PostgreSQL容器创建失败"
+        exit 1
+    fi
 }
 
 # 配置 PostgreSQL
@@ -158,10 +225,21 @@ configure_postgresql() {
 
 # 安装 Redis (使用Docker避免冲突)
 install_redis() {
+    if [ "$REDIS_EXISTS" = true ]; then
+        log_info "Redis 容器已存在，跳过安装"
+        
+        # 如果容器存在但未运行，启动它
+        if ! docker ps --format "table {{.Names}}" | grep -q "redis-rag"; then
+            log_info "启动现有的 Redis 容器..."
+            docker start redis-rag
+        fi
+        return 0
+    fi
+    
     log_step "安装 Redis (Docker容器: redis-rag)..."
     
     # 检查Docker是否安装
-    if ! command -v docker &> /dev/null; then
+    if [ "$DOCKER_INSTALLED" = false ]; then
         log_info "安装 Docker..."
         case $OS in
             "debian")
@@ -193,25 +271,26 @@ install_redis() {
         exit 0
     fi
     
-    # 停止并删除现有的redis-rag容器（如果存在）
-    docker stop redis-rag 2>/dev/null || true
-    docker rm redis-rag 2>/dev/null || true
-    
-    # 创建Redis数据目录
+    # 创建Redis数据目录（幂等操作）
     sudo mkdir -p /opt/ragflow-rag/redis-data
-    sudo chown $USER:$USER /opt/ragflow-rag/redis-data
+    sudo chown $USER:$USER /opt/ragflow-rag/redis-data 2>/dev/null || true
     
     # 启动Redis容器
-    docker run -d \
+    if docker run -d \
         --name redis-rag \
         --restart unless-stopped \
         -p 6380:6379 \
         -v /opt/ragflow-rag/redis-data:/data \
         -e REDIS_PASSWORD=ragflow123 \
         redis:7-alpine \
-        redis-server --requirepass ragflow123 --appendonly yes
-    
-    log_success "Redis容器 (redis-rag) 安装完成，端口: 6380"
+        redis-server --requirepass ragflow123 --appendonly yes; then
+        
+        log_success "Redis容器 (redis-rag) 安装完成，端口: 6380"
+        REDIS_EXISTS=true
+    else
+        log_error "Redis容器创建失败"
+        exit 1
+    fi
 }
 
 # 配置 Redis
@@ -260,9 +339,27 @@ install_python_tools() {
     log_success "Python 工具安装完成"
 }
 
+# 检查数据库是否已初始化
+check_database_initialized() {
+    # 检查是否已有表结构
+    local table_count=$(docker exec postgres-rag psql -U ragflow_user -d xdan_rag_service -t -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public' AND table_name IN ('chats', 'messages', 's3_workflow_traces', 'langfuse_sessions');" 2>/dev/null | tr -d ' ' || echo "0")
+    
+    if [ "$table_count" -eq 4 ]; then
+        log_info "数据库已初始化，跳过初始化步骤"
+        return 0
+    else
+        return 1
+    fi
+}
+
 # 初始化数据库
 initialize_database() {
     log_step "初始化项目数据库..."
+    
+    # 检查是否已初始化
+    if check_database_initialized; then
+        return 0
+    fi
     
     # 设置数据库连接环境变量（使用容器配置）
     export DB_HOST="localhost"
@@ -271,21 +368,10 @@ initialize_database() {
     export DB_USER="ragflow_user"
     export DB_PASSWORD="ragflow123"
     
-    # 检查初始化脚本是否存在
-    if [ -f "scripts/init_postgresql.sh" ]; then
-        chmod +x scripts/init_postgresql.sh
-        
-        log_info "运行数据库初始化脚本..."
-        # 修改脚本使用Docker容器连接
-        sed -i.bak "s/psql -h/docker exec postgres-rag psql -h localhost -p 5432 -U ragflow_user -d/g" scripts/init_postgresql.sh
-        ./scripts/init_postgresql.sh
-        # 恢复原脚本
-        mv scripts/init_postgresql.sh.bak scripts/init_postgresql.sh
-    else
-        log_warning "数据库初始化脚本不存在，使用内置SQL创建表结构..."
-        
-        # 使用Docker容器执行SQL
-        docker exec postgres-rag psql -U ragflow_user -d xdan_rag_service << 'EOF'
+    log_info "使用Docker容器执行数据库初始化..."
+    
+    # 直接使用Docker容器执行SQL，避免依赖外部psql
+    if docker exec postgres-rag psql -U ragflow_user -d xdan_rag_service << 'EOF'
 -- 创建chats表 - 存储对话会话信息
 CREATE TABLE IF NOT EXISTS chats (
     id VARCHAR(255) PRIMARY KEY,
@@ -354,31 +440,101 @@ CREATE TRIGGER update_chats_updated_at
     FOR EACH ROW 
     EXECUTE FUNCTION update_updated_at_column();
 EOF
+    then
+        log_success "数据库初始化完成"
+    else
+        log_error "数据库初始化失败"
+        return 1
     fi
-    
-    log_success "数据库初始化完成"
+}
+
+# 检查并处理运行中的应用程序
+check_running_application() {
+    # 检查是否有RAG服务在运行
+    if pgrep -f "uvicorn.*main:app" > /dev/null; then
+        log_warning "检测到RAG服务正在运行"
+        echo "当前运行的进程："
+        ps aux | grep -E "(uvicorn.*main:app|python.*main\.py)" | grep -v grep
+        echo
+        
+        read -p "是否停止当前运行的服务以继续部署? (y/N): " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            log_info "停止运行中的RAG服务..."
+            
+            # 尝试优雅关闭
+            if [ -f "stop_server.sh" ]; then
+                ./stop_server.sh 2>/dev/null || true
+            fi
+            
+            # 强制关闭剩余进程
+            pkill -f "uvicorn.*main:app" 2>/dev/null || true
+            pkill -f "python.*main\.py" 2>/dev/null || true
+            
+            # 等待进程完全关闭
+            sleep 3
+            
+            if pgrep -f "uvicorn.*main:app" > /dev/null; then
+                log_error "无法停止运行中的服务，请手动关闭后重试"
+                exit 1
+            else
+                log_success "服务已停止"
+            fi
+        else
+            log_warning "用户选择保留运行中的服务，跳过应用程序部署"
+            return 1
+        fi
+    fi
+    return 0
 }
 
 # 部署应用程序
 deploy_application() {
     log_step "部署应用程序..."
     
-    # 创建虚拟环境
-    if command -v uv &> /dev/null; then
-        log_info "使用 uv 创建虚拟环境..."
-        uv venv .venv
-        source .venv/bin/activate
-        uv pip install -r requirements.txt
-        uv pip install httpx python-multipart asyncpg redis
-    else
-        log_info "使用 pip 创建虚拟环境..."
-        python3 -m venv venv
-        source venv/bin/activate
-        pip install -r requirements.txt
-        pip install httpx python-multipart asyncpg redis
+    # 检查运行中的应用程序
+    if ! check_running_application; then
+        log_info "跳过应用程序部署步骤"
+        return 0
     fi
     
-    # 创建必要目录
+    # 检查是否已有虚拟环境
+    if [ -d ".venv" ] || [ -d "venv" ]; then
+        log_info "Python虚拟环境已存在"
+        # 激活现有环境
+        if [ -d ".venv" ]; then
+            source .venv/bin/activate
+        else
+            source venv/bin/activate
+        fi
+        
+        # 更新依赖（幂等操作）
+        log_info "更新Python依赖..."
+        if command -v uv &> /dev/null; then
+            uv pip install -r requirements.txt --upgrade
+            uv pip install httpx python-multipart asyncpg redis --upgrade
+        else
+            pip install -r requirements.txt --upgrade
+            pip install httpx python-multipart asyncpg redis --upgrade
+        fi
+    else
+        # 创建新的虚拟环境
+        if command -v uv &> /dev/null; then
+            log_info "使用 uv 创建虚拟环境..."
+            uv venv .venv
+            source .venv/bin/activate
+            uv pip install -r requirements.txt
+            uv pip install httpx python-multipart asyncpg redis
+        else
+            log_info "使用 pip 创建虚拟环境..."
+            python3 -m venv venv
+            source venv/bin/activate
+            pip install -r requirements.txt
+            pip install httpx python-multipart asyncpg redis
+        fi
+    fi
+    
+    # 创建必要目录（幂等操作）
     mkdir -p logs data
     
     # 配置环境文件
@@ -423,6 +579,27 @@ EOF
     chmod +x start_server.sh stop_server.sh 2>/dev/null || true
     
     log_success "应用程序部署完成"
+    
+    # 询问是否立即启动服务
+    echo
+    read -p "是否立即启动RAG服务? (y/N): " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        if [ -f "start_server.sh" ]; then
+            log_info "启动RAG服务..."
+            ./start_server.sh start
+            sleep 3
+            if pgrep -f "uvicorn.*main:app" > /dev/null; then
+                log_success "RAG服务启动成功"
+            else
+                log_warning "RAG服务启动可能失败，请检查日志"
+            fi
+        else
+            log_warning "start_server.sh 脚本不存在，请手动启动服务"
+        fi
+    else
+        log_info "稍后可运行 ./start_server.sh start 启动服务"
+    fi
 }
 
 # 创建服务管理脚本
@@ -578,14 +755,23 @@ main() {
     # 检查环境
     detect_os
     check_root
+    check_existing_installation
     
     # 询问是否继续
+    echo
     echo "此脚本将安装以下组件："
     echo "- PostgreSQL 15 (Docker容器: postgres-rag, 端口: 5433)"
     echo "- Redis (Docker容器: redis-rag, 端口: 6380)"
     echo "- Python 虚拟环境"
     echo "- xDAN RAG Copilot 应用"
     echo
+    if [ "$POSTGRES_EXISTS" = true ] || [ "$REDIS_EXISTS" = true ]; then
+        echo "检测到现有安装，脚本将："
+        echo "- 跳过已安装的组件"
+        echo "- 启动已停止的容器"
+        echo "- 更新应用程序代码"
+        echo
+    fi
     read -p "是否继续部署? (y/N): " -n 1 -r
     echo
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
@@ -593,17 +779,17 @@ main() {
         exit 0
     fi
     
-    # 执行部署步骤
-    install_system_dependencies
-    install_postgresql
-    configure_postgresql
-    install_redis
-    configure_redis
-    install_python_tools
-    initialize_database
-    deploy_application
-    create_service_scripts
-    health_check
+    # 执行部署步骤（支持断点续传）
+    install_system_dependencies || { log_error "系统依赖安装失败"; exit 1; }
+    install_postgresql || { log_error "PostgreSQL安装失败"; exit 1; }
+    configure_postgresql || { log_error "PostgreSQL配置失败"; exit 1; }
+    install_redis || { log_error "Redis安装失败"; exit 1; }
+    configure_redis || { log_error "Redis配置失败"; exit 1; }
+    install_python_tools || { log_error "Python工具安装失败"; exit 1; }
+    initialize_database || { log_error "数据库初始化失败"; exit 1; }
+    deploy_application || { log_error "应用程序部署失败"; exit 1; }
+    create_service_scripts || { log_error "服务脚本创建失败"; exit 1; }
+    health_check || { log_warning "健康检查发现问题，但部署已完成"; }
     
     # 显示结果
     show_deployment_summary
