@@ -10,9 +10,9 @@ BLUE='\033[0;34m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-# 检查API代理服务是否已在运行
-check_api_proxy_running() {
-    if pgrep -f "api_proxy.py" > /dev/null; then
+# 检查RAG API服务是否已在运行
+check_api_running() {
+    if pgrep -f "src/api/server.py" > /dev/null || pgrep -f "uvicorn.*main:app" > /dev/null; then
         return 0
     else
         return 1
@@ -37,14 +37,16 @@ check_frontend_running() {
     fi
 }
 
-# 停止API代理服务
-stop_api_proxy() {
-    echo "正在停止API代理服务..."
-    pkill -f "api_proxy.py"
+# 停止RAG API服务
+stop_api_service() {
+    echo "正在停止RAG API服务..."
+    pkill -f "src/api/server.py"
+    pkill -f "uvicorn.*main:app"
     sleep 2
-    if check_api_proxy_running; then
-        echo -e "${RED}API代理服务停止失败，尝试强制停止...${NC}"
-        pkill -9 -f "api_proxy.py"
+    if check_api_running; then
+        echo -e "${RED}RAG API服务停止失败，尝试强制停止...${NC}"
+        pkill -9 -f "src/api/server.py"
+        pkill -9 -f "uvicorn.*main:app"
         sleep 1
     fi
 }
@@ -70,9 +72,9 @@ stop_frontend_service() {
     sleep 2
 }
 
-# 启动API代理服务
-start_api_proxy() {
-    echo -e "${BLUE}正在启动xDAN Rag Copilot API Service...${NC}"
+# 启动RAG API服务
+start_api_service() {
+    echo -e "${BLUE}正在启动xDAN RAG Copilot API Service v2.0...${NC}"
     
     # 确保日志目录存在
     mkdir -p logs
@@ -86,19 +88,25 @@ start_api_proxy() {
         echo -e "${YELLOW}未找到虚拟环境，使用系统Python${NC}"
     fi
     
-    nohup python3 api_proxy.py > logs/api_proxy_$(date +%Y%m%d_%H%M%S).log 2>&1 &
+    # 检查Python模块路径
+    export PYTHONPATH="${PYTHONPATH}:$(pwd)"
+    
+    # 启动新架构的API服务
+    nohup uvicorn src.api.server:app --host 0.0.0.0 --port 8050 --log-level info > logs/api_server_$(date +%Y%m%d_%H%M%S).log 2>&1 &
     
     # 等待服务启动
-    sleep 3
+    sleep 5
     
     # 检查服务是否成功启动
-    if check_api_proxy_running; then
-        echo -e "${GREEN}✅ API代理服务启动成功！${NC}"
+    if check_api_running; then
+        echo -e "${GREEN}✅ RAG API服务启动成功！${NC}"
         echo -e "${GREEN}API访问地址: http://localhost:8050${NC}"
         echo -e "${GREEN}API文档: http://localhost:8050/docs${NC}"
         echo -e "${GREEN}健康检查: http://localhost:8050/health${NC}"
     else
-        echo -e "${RED}❌ API代理服务启动失败，请检查日志文件${NC}"
+        echo -e "${RED}❌ RAG API服务启动失败，请检查日志文件${NC}"
+        echo -e "${YELLOW}最新日志：${NC}"
+        tail -10 logs/api_server_*.log 2>/dev/null || echo "无法读取日志文件"
         return 1
     fi
 }
@@ -174,11 +182,11 @@ case "$1" in
     start)
         echo -e "${BLUE}=== 启动 xDAN Rag Copilot 服务 ===${NC}"
         
-        # 检查API代理服务
-        if check_api_proxy_running; then
-            echo -e "${YELLOW}API代理服务已在运行中${NC}"
+        # 检查RAG API服务
+        if check_api_running; then
+            echo -e "${YELLOW}RAG API服务已在运行中${NC}"
         else
-            start_api_proxy
+            start_api_service
         fi
         
         # 询问是否启动搜索演示
@@ -205,18 +213,18 @@ case "$1" in
         ;;
     stop)
         # 停止所有服务
-        stop_api_proxy
+        stop_api_service
         stop_demo_service
         stop_frontend_service
         echo -e "${GREEN}所有服务已停止${NC}"
         ;;
     restart)
         # 重启所有服务
-        stop_api_proxy
+        stop_api_service
         stop_demo_service
         stop_frontend_service
         sleep 2
-        start_api_proxy
+        start_api_service
         
         read -p "是否重启搜索演示服务？(y/n) " -n 1 -r
         echo
@@ -234,11 +242,11 @@ case "$1" in
         echo -e "${BLUE}=== 服务状态 ===${NC}"
         echo
         
-        # API代理服务状态
-        echo -e "${BLUE}[API代理服务]${NC}"
-        if check_api_proxy_running; then
+        # RAG API服务状态
+        echo -e "${BLUE}[RAG API服务]${NC}"
+        if check_api_running; then
             echo -e "${GREEN}✅ 运行中${NC} - http://localhost:8050"
-            ps aux | grep api_proxy.py | grep -v grep | head -1
+            ps aux | grep -E "(src/api/server.py|uvicorn.*main:app)" | grep -v grep | head -1
         else
             echo -e "${RED}❌ 未运行${NC}"
         fi
@@ -266,26 +274,26 @@ case "$1" in
             echo -e "${RED}❌ 未运行${NC}"
         fi
         ;;
-    api-proxy)
-        # 仅管理API代理服务
+    api)
+        # 仅管理RAG API服务
         case "$2" in
             start)
-                if check_api_proxy_running; then
-                    echo -e "${RED}API代理服务已在运行中${NC}"
+                if check_api_running; then
+                    echo -e "${RED}RAG API服务已在运行中${NC}"
                 else
-                    start_api_proxy
+                    start_api_service
                 fi
                 ;;
             stop)
-                stop_api_proxy
+                stop_api_service
                 ;;
             restart)
-                stop_api_proxy
+                stop_api_service
                 sleep 2
-                start_api_proxy
+                start_api_service
                 ;;
             *)
-                echo "使用方法: $0 api-proxy {start|stop|restart}"
+                echo "使用方法: $0 api {start|stop|restart}"
                 ;;
         esac
         ;;
@@ -335,21 +343,21 @@ case "$1" in
         esac
         ;;
     *)
-        echo -e "${BLUE}=== xDAN Rag Copilot 服务管理脚本 ===${NC}"
-        echo "使用方法: $0 {start|stop|restart|status|api-proxy|demo|frontend}"
+        echo -e "${BLUE}=== xDAN RAG Copilot 服务管理脚本 v2.0 ===${NC}"
+        echo "使用方法: $0 {start|stop|restart|status|api|demo|frontend}"
         echo ""
         echo "命令说明:"
         echo "  start      - 启动所有服务（会询问是否启动可选服务）"
         echo "  stop       - 停止所有服务"
         echo "  restart    - 重启所有服务"
         echo "  status     - 查看所有服务状态"
-        echo "  api-proxy  - 管理API代理服务 (start|stop|restart)"
+        echo "  api        - 管理RAG API服务 (start|stop|restart)"
         echo "  demo       - 管理搜索演示服务 (start|stop|restart)"
         echo "  frontend   - 管理前端服务 (start|stop|restart)"
         echo ""
         echo "示例:"
         echo "  $0 start                  # 启动服务（交互式）"
-        echo "  $0 api-proxy start        # 仅启动API代理服务"
+        echo "  $0 api start              # 仅启动RAG API服务"
         echo "  $0 demo stop              # 仅停止搜索演示服务"
         echo "  $0 frontend restart       # 仅重启前端服务"
         echo "  $0 status                 # 查看所有服务状态"
