@@ -69,6 +69,10 @@ frontend/*.local
 test_results_*.json
 search_process_recording_*.json
 
+# Documentation and tests (local development only)
+docs/
+tests/
+
 # Credentials and sensitive data
 config/credentials.py
 *_credentials.py

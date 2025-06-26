@@ -1,0 +1,63 @@
+{
+  "test_summary": {
+    "total_tests": 3,
+    "passed_tests": 1,
+    "failed_tests": 2,
+    "success_rate": 33.33333333333333,
+    "timestamp": "2025-06-26T12:28:06.450432"
+  },
+  "detailed_results": [
+    {
+      "test_name": "健康检查",
+      "success": true,
+      "timestamp": "2025-06-26T12:28:06.448487",
+      "response_data": {
+        "code": 0,
+        "message": "Success",
+        "data": {
+          "status": "healthy",
+          "service": "xDAN RAG Copilot API Proxy V4",
+          "timestamp": "2025-06-26T12:28:06.447727",
+          "features": [
+            "document_upload",
+            "retry_mechanism",
+            "status_query",
+            "response_optimization"
+          ]
+        }
+      },
+      "error": null
+    },
+    {
+      "test_name": "获取数据集列表",
+      "success": false,
+      "timestamp": "2025-06-26T12:28:06.449513",
+      "response_data": {
+        "detail": {
+          "code": 401,
+          "message": "未授权：无效的 API Key",
+          "data": null
+        }
+      },
+      "error": null
+    },
+    {
+      "test_name": "创建数据集",
+      "success": false,
+      "timestamp": "2025-06-26T12:28:06.450190",
+      "response_data": {
+        "detail": {
+          "code": 401,
+          "message": "未授权：无效的 API Key",
+          "data": null
+        }
+      },
+      "error": null
+    }
+  ],
+  "created_resources": {
+    "datasets": [],
+    "chats": [],
+    "documents": []
+  }
+}

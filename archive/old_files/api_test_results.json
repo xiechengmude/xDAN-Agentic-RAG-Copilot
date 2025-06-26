@@ -1,0 +1,571 @@
+{
+  "timestamp": "2025-06-26T12:03:52.768885",
+  "summary": {
+    "total": 10,
+    "successful": 10,
+    "failed": 0,
+    "success_rate": 100.0
+  },
+  "results": [
+    {
+      "method": "GET",
+      "endpoint": "/health",
+      "description": "基础健康检查",
+      "status_code": 200,
+      "response_time_ms": 7.06,
+      "success": true,
+      "response": {
+        "code": 0,
+        "message": "Success",
+        "data": {
+          "status": "healthy",
+          "service": "xDAN RAG Copilot API Proxy V4 - Fixed",
+          "timestamp": "2025-06-26T12:03:50.506268",
+          "features": [
+            "document_upload",
+            "retry_mechanism",
+            "status_query",
+            "response_optimization",
+            "fixed_env_loading",
+            "fixed_dataset_creation",
+            "fixed_document_management",
+            "fixed_chat_creation"
+          ]
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "endpoint": "/health/detailed",
+      "description": "详细健康检查",
+      "status_code": 200,
+      "response_time_ms": 211.86,
+      "success": true,
+      "response": {
+        "code": 0,
+        "message": "Success",
+        "data": {
+          "service": "healthy",
+          "ragflow": "healthy",
+          "timestamp": "2025-06-26T12:03:50.717847",
+          "ragflow_url": "http://150.109.16.195:7080",
+          "fixes_applied": [
+            "环境变量加载修复",
+            "数据集创建参数修复",
+            "文档管理逻辑修复",
+            "对话创建限制修复"
+          ]
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "endpoint": "/api/v1/datasets",
+      "description": "获取数据集列表",
+      "status_code": 200,
+      "response_time_ms": 172.46,
+      "success": true,
+      "response": {
+        "code": 0,
+        "message": "Success",
+        "data": [
+          {
+            "id": "5978d52451aa11f0b1e70242ac140006",
+            "name": "分析测试_1750845253",
+            "description": "用于分析响应大小",
+            "document_count": 0,
+            "chunk_count": 0,
+            "token_count": 0,
+            "language": "English",
+            "embedding_model": "BAAI/bge-m3@SILICONFLOW",
+            "created_at": "Wed, 25 Jun 2025 17:54:13 GMT",
+            "updated_at": "Wed, 25 Jun 2025 17:54:13 GMT",
+            "status": "1"
+          },
+          {
+            "id": "08c88df051a411f08b900242ac140006",
+            "name": "第三方测试数据集_1750842540",
+            "description": "第三方客户端测试用数据集",
+            "document_count": 0,
+            "chunk_count": 0,
+            "token_count": 0,
+            "language": "English",
+            "embedding_model": "BAAI/bge-m3@SILICONFLOW",
+            "created_at": "Wed, 25 Jun 2025 17:09:01 GMT",
+            "updated_at": "Wed, 25 Jun 2025 17:09:01 GMT",
+            "status": "1"
+          },
+          {
+            "id": "1d27360c519a11f0a8180242ac140006",
+            "name": "第三方测试数据集_1750838279",
+            "description": "第三方客户端测试用数据集",
+            "document_count": 0,
+            "chunk_count": 0,
+            "token_count": 0,
+            "language": "English",
+            "embedding_model": "BAAI/bge-m3@SILICONFLOW",
+            "created_at": "Wed, 25 Jun 2025 15:58:00 GMT",
+            "updated_at": "Wed, 25 Jun 2025 15:58:00 GMT",
+            "status": "1"
+          },
+          {
+            "id": "fe266fca519911f086a90242ac140006",
+            "name": "第三方测试数据集_1750838227",
+            "description": "第三方客户端测试用数据集",
+            "document_count": 0,
+            "chunk_count": 0,
+            "token_count": 0,
+            "language": "English",
+            "embedding_model": "BAAI/bge-m3@SILICONFLOW",
+            "created_at": "Wed, 25 Jun 2025 15:57:08 GMT",
+            "updated_at": "Wed, 25 Jun 2025 15:57:08 GMT",
+            "status": "1"
+          },
+          {
+            "id": "ab728efe518911f081830242ac140006",
+            "name": "第三方测试数据集_1750831216",
+            "description": "第三方客户端测试用数据集",
+            "document_count": 0,
+            "chunk_count": 0,
+            "token_count": 0,
+            "language": "English",
+            "embedding_model": "BAAI/bge-m3@SILICONFLOW",
+            "created_at": "Wed, 25 Jun 2025 14:00:17 GMT",
+            "updated_at": "Wed, 25 Jun 2025 14:00:17 GMT",
+            "status": "1"
+          },
+          {
+            "id": "94ebb35a517411f0875f0242ac140006",
+            "name": "第三方测试数据集_1750822159",
+            "description": "第三方客户端测试用数据集",
+            "document_count": 0,
+            "chunk_count": 0,
+            "token_count": 0,
+            "language": "English",
+            "embedding_model": "BAAI/bge-m3@SILICONFLOW",
+            "created_at": "Wed, 25 Jun 2025 11:29:20 GMT",
+            "updated_at": "Wed, 25 Jun 2025 11:29:20 GMT",
+            "status": "1"
+          },
+          {
+            "id": "86b2357a517411f0ba340242ac140006",
+            "name": "调试测试数据集",
+            "description": "用于调试的测试数据集",
+            "document_count": 0,
+            "chunk_count": 0,
+            "token_count": 0,
+            "language": "English",
+            "embedding_model": "BAAI/bge-m3@SILICONFLOW",
+            "created_at": "Wed, 25 Jun 2025 11:28:56 GMT",
+            "updated_at": "Wed, 25 Jun 2025 11:28:56 GMT",
+            "status": "1"
+          },
+          {
+            "id": "29a8f5924feb11f0a67a0242ac140006",
+            "name": "API测试_0623_123308",
+            "description": "API全链路测试知识库",
+            "document_count": 0,
+            "chunk_count": 0,
+            "token_count": 0,
+            "language": "English",
+            "embedding_model": "BAAI/bge-m3@SILICONFLOW",
+            "created_at": "Mon, 23 Jun 2025 12:33:08 GMT",
+            "updated_at": "Mon, 23 Jun 2025 12:33:08 GMT",
+            "status": "1"
+          },
+          {
+            "id": "b66e12c44fea11f0bc4e0242ac140006",
+            "name": "全链路测试知识库_0623_122954",
+            "description": "用于全链路API测试的知识库",
+            "document_count": 3,
+            "chunk_count": 0,
+            "token_count": 0,
+            "language": "English",
+            "embedding_model": "BAAI/bge-m3@SILICONFLOW",
+            "created_at": "Mon, 23 Jun 2025 12:29:55 GMT",
+            "updated_at": "Mon, 23 Jun 2025 12:29:55 GMT",
+            "status": "1"
+          },
+          {
+            "id": "96f213004fea11f096400242ac140006",
+            "name": "全链路测试知识库_0623_122901",
+            "description": "用于全链路API测试的知识库",
+            "document_count": 3,
+            "chunk_count": 0,
+            "token_count": 0,
+            "language": "English",
+            "embedding_model": "BAAI/bge-m3@SILICONFLOW",
+            "created_at": "Mon, 23 Jun 2025 12:29:02 GMT",
+            "updated_at": "Mon, 23 Jun 2025 12:29:03 GMT",
+            "status": "1"
+          }
+        ],
+        "meta": {
+          "page": 1,
+          "page_size": 10,
+          "total": 10,
+          "optimized": true
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "endpoint": "/api/v1/datasets?page=1&page_size=5",
+      "description": "分页获取数据集",
+      "status_code": 200,
+      "response_time_ms": 191.88,
+      "success": true,
+      "response": {
+        "code": 0,
+        "message": "Success",
+        "data": [
+          {
+            "id": "5978d52451aa11f0b1e70242ac140006",
+            "name": "分析测试_1750845253",
+            "description": "用于分析响应大小",
+            "document_count": 0,
+            "chunk_count": 0,
+            "token_count": 0,
+            "language": "English",
+            "embedding_model": "BAAI/bge-m3@SILICONFLOW",
+            "created_at": "Wed, 25 Jun 2025 17:54:13 GMT",
+            "updated_at": "Wed, 25 Jun 2025 17:54:13 GMT",
+            "status": "1"
+          },
+          {
+            "id": "08c88df051a411f08b900242ac140006",
+            "name": "第三方测试数据集_1750842540",
+            "description": "第三方客户端测试用数据集",
+            "document_count": 0,
+            "chunk_count": 0,
+            "token_count": 0,
+            "language": "English",
+            "embedding_model": "BAAI/bge-m3@SILICONFLOW",
+            "created_at": "Wed, 25 Jun 2025 17:09:01 GMT",
+            "updated_at": "Wed, 25 Jun 2025 17:09:01 GMT",
+            "status": "1"
+          },
+          {
+            "id": "1d27360c519a11f0a8180242ac140006",
+            "name": "第三方测试数据集_1750838279",
+            "description": "第三方客户端测试用数据集",
+            "document_count": 0,
+            "chunk_count": 0,
+            "token_count": 0,
+            "language": "English",
+            "embedding_model": "BAAI/bge-m3@SILICONFLOW",
+            "created_at": "Wed, 25 Jun 2025 15:58:00 GMT",
+            "updated_at": "Wed, 25 Jun 2025 15:58:00 GMT",
+            "status": "1"
+          },
+          {
+            "id": "fe266fca519911f086a90242ac140006",
+            "name": "第三方测试数据集_1750838227",
+            "description": "第三方客户端测试用数据集",
+            "document_count": 0,
+            "chunk_count": 0,
+            "token_count": 0,
+            "language": "English",
+            "embedding_model": "BAAI/bge-m3@SILICONFLOW",
+            "created_at": "Wed, 25 Jun 2025 15:57:08 GMT",
+            "updated_at": "Wed, 25 Jun 2025 15:57:08 GMT",
+            "status": "1"
+          },
+          {
+            "id": "ab728efe518911f081830242ac140006",
+            "name": "第三方测试数据集_1750831216",
+            "description": "第三方客户端测试用数据集",
+            "document_count": 0,
+            "chunk_count": 0,
+            "token_count": 0,
+            "language": "English",
+            "embedding_model": "BAAI/bge-m3@SILICONFLOW",
+            "created_at": "Wed, 25 Jun 2025 14:00:17 GMT",
+            "updated_at": "Wed, 25 Jun 2025 14:00:17 GMT",
+            "status": "1"
+          }
+        ],
+        "meta": {
+          "page": 1,
+          "page_size": 5,
+          "total": 5,
+          "optimized": true
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "endpoint": "/api/v1/datasets",
+      "description": "创建数据集",
+      "status_code": 200,
+      "response_time_ms": 181.41,
+      "success": true,
+      "response": {
+        "code": 0,
+        "message": "Success",
+        "data": {}
+      }
+    },
+    {
+      "method": "GET",
+      "endpoint": "/api/v1/datasets/5978d52451aa11f0b1e70242ac140006/documents",
+      "description": "获取文档列表",
+      "status_code": 200,
+      "response_time_ms": 186.87,
+      "success": true,
+      "response": {
+        "code": 0,
+        "message": "Success",
+        "data": {
+          "docs": [],
+          "total": 0
+        },
+        "meta": {
+          "page": 1,
+          "page_size": 10,
+          "total": 2,
+          "dataset_id": "5978d52451aa11f0b1e70242ac140006"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "endpoint": "/api/v1/datasets/5978d52451aa11f0b1e70242ac140006/documents?page=1&page_size=5",
+      "description": "分页获取文档",
+      "status_code": 200,
+      "response_time_ms": 214.17,
+      "success": true,
+      "response": {
+        "code": 0,
+        "message": "Success",
+        "data": {
+          "docs": [],
+          "total": 0
+        },
+        "meta": {
+          "page": 1,
+          "page_size": 5,
+          "total": 2,
+          "dataset_id": "5978d52451aa11f0b1e70242ac140006"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "endpoint": "/api/v1/chats",
+      "description": "获取对话列表",
+      "status_code": 200,
+      "response_time_ms": 221.35,
+      "success": true,
+      "response": {
+        "code": 0,
+        "message": "Success",
+        "data": [
+          {
+            "id": "8ceadd60524211f0a4010242ac140006",
+            "name": "修复测试对话_120342",
+            "description": "测试业务逻辑修复",
+            "create_date": "Thu, 26 Jun 2025 12:03:43 GMT",
+            "update_date": "Thu, 26 Jun 2025 12:03:43 GMT",
+            "status": "1",
+            "language": "English",
+            "llm_model": null,
+            "prompt_type": "simple"
+          },
+          {
+            "id": "8b7ed6d850ea11f0872f0242ac140006",
+            "name": "对话_20250624_190113",
+            "description": "A helpful Assistant",
+            "create_date": "Tue, 24 Jun 2025 19:01:14 GMT",
+            "update_date": "Tue, 24 Jun 2025 19:01:14 GMT",
+            "status": "1",
+            "language": "English",
+            "llm_model": null,
+            "prompt_type": "simple"
+          },
+          {
+            "id": "095b6b4e50ea11f085ea0242ac140006",
+            "name": "对话_20250624_185735",
+            "description": "A helpful Assistant",
+            "create_date": "Tue, 24 Jun 2025 18:57:35 GMT",
+            "update_date": "Tue, 24 Jun 2025 18:57:35 GMT",
+            "status": "1",
+            "language": "English",
+            "llm_model": null,
+            "prompt_type": "simple"
+          },
+          {
+            "id": "7abe515850e411f0addd0242ac140006",
+            "name": "对话_20250624_181748",
+            "description": "A helpful Assistant",
+            "create_date": "Tue, 24 Jun 2025 18:17:49 GMT",
+            "update_date": "Tue, 24 Jun 2025 18:17:49 GMT",
+            "status": "1",
+            "language": "English",
+            "llm_model": null,
+            "prompt_type": "simple"
+          },
+          {
+            "id": "2d0215664feb11f09be10242ac140006",
+            "name": "全链路测试对话_123313",
+            "description": "用于API全链路测试的对话会话",
+            "create_date": "Mon, 23 Jun 2025 12:33:13 GMT",
+            "update_date": "Mon, 23 Jun 2025 12:33:13 GMT",
+            "status": "1",
+            "language": "English",
+            "llm_model": null,
+            "prompt_type": "simple"
+          },
+          {
+            "id": "e734ebbc4fea11f0bc100242ac140006",
+            "name": "测试对话_123116",
+            "description": "A helpful Assistant",
+            "create_date": "Mon, 23 Jun 2025 12:31:16 GMT",
+            "update_date": "Mon, 23 Jun 2025 12:31:16 GMT",
+            "status": "1",
+            "language": "English",
+            "llm_model": null,
+            "prompt_type": "simple"
+          },
+          {
+            "id": "7e91458e4fda11f0b0d70242ac140006",
+            "name": "测试_103349",
+            "description": "A helpful Assistant",
+            "create_date": "Mon, 23 Jun 2025 10:33:49 GMT",
+            "update_date": "Mon, 23 Jun 2025 10:33:49 GMT",
+            "status": "1",
+            "language": "English",
+            "llm_model": null,
+            "prompt_type": "simple"
+          },
+          {
+            "id": "4d04ebf64fda11f0a7180242ac140006",
+            "name": "调试对话_103226",
+            "description": "A helpful Assistant",
+            "create_date": "Mon, 23 Jun 2025 10:32:26 GMT",
+            "update_date": "Mon, 23 Jun 2025 10:32:26 GMT",
+            "status": "1",
+            "language": "English",
+            "llm_model": null,
+            "prompt_type": "simple"
+          },
+          {
+            "id": "a3294a144fd911f0803f0242ac140006",
+            "name": "测试对话_102741",
+            "description": "A helpful Assistant",
+            "create_date": "Mon, 23 Jun 2025 10:27:41 GMT",
+            "update_date": "Mon, 23 Jun 2025 10:27:41 GMT",
+            "status": "1",
+            "language": "English",
+            "llm_model": null,
+            "prompt_type": "simple"
+          }
+        ],
+        "meta": {
+          "page": 1,
+          "page_size": 10,
+          "total": 9,
+          "optimized": true
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "endpoint": "/api/v1/chats?page=1&page_size=5",
+      "description": "分页获取对话",
+      "status_code": 200,
+      "response_time_ms": 271.31,
+      "success": true,
+      "response": {
+        "code": 0,
+        "message": "Success",
+        "data": [
+          {
+            "id": "8ceadd60524211f0a4010242ac140006",
+            "name": "修复测试对话_120342",
+            "description": "测试业务逻辑修复",
+            "create_date": "Thu, 26 Jun 2025 12:03:43 GMT",
+            "update_date": "Thu, 26 Jun 2025 12:03:43 GMT",
+            "status": "1",
+            "language": "English",
+            "llm_model": null,
+            "prompt_type": "simple"
+          },
+          {
+            "id": "8b7ed6d850ea11f0872f0242ac140006",
+            "name": "对话_20250624_190113",
+            "description": "A helpful Assistant",
+            "create_date": "Tue, 24 Jun 2025 19:01:14 GMT",
+            "update_date": "Tue, 24 Jun 2025 19:01:14 GMT",
+            "status": "1",
+            "language": "English",
+            "llm_model": null,
+            "prompt_type": "simple"
+          },
+          {
+            "id": "095b6b4e50ea11f085ea0242ac140006",
+            "name": "对话_20250624_185735",
+            "description": "A helpful Assistant",
+            "create_date": "Tue, 24 Jun 2025 18:57:35 GMT",
+            "update_date": "Tue, 24 Jun 2025 18:57:35 GMT",
+            "status": "1",
+            "language": "English",
+            "llm_model": null,
+            "prompt_type": "simple"
+          },
+          {
+            "id": "7abe515850e411f0addd0242ac140006",
+            "name": "对话_20250624_181748",
+            "description": "A helpful Assistant",
+            "create_date": "Tue, 24 Jun 2025 18:17:49 GMT",
+            "update_date": "Tue, 24 Jun 2025 18:17:49 GMT",
+            "status": "1",
+            "language": "English",
+            "llm_model": null,
+            "prompt_type": "simple"
+          },
+          {
+            "id": "2d0215664feb11f09be10242ac140006",
+            "name": "全链路测试对话_123313",
+            "description": "用于API全链路测试的对话会话",
+            "create_date": "Mon, 23 Jun 2025 12:33:13 GMT",
+            "update_date": "Mon, 23 Jun 2025 12:33:13 GMT",
+            "status": "1",
+            "language": "English",
+            "llm_model": null,
+            "prompt_type": "simple"
+          }
+        ],
+        "meta": {
+          "page": 1,
+          "page_size": 5,
+          "total": 5,
+          "optimized": true
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "endpoint": "/api/v1/chats",
+      "description": "创建对话",
+      "status_code": 200,
+      "response_time_ms": 390.41,
+      "success": true,
+      "response": {
+        "code": 0,
+        "message": "Success",
+        "data": {
+          "id": "927e46ea524211f0aac80242ac140006",
+          "name": "API测试对话_20250626_120351",
+          "description": "用于API测试的对话",
+          "create_date": "Thu, 26 Jun 2025 12:03:52 GMT",
+          "update_date": "Thu, 26 Jun 2025 12:03:52 GMT",
+          "status": "1",
+          "language": "English",
+          "llm_model": null,
+          "prompt_type": "simple"
+        }
+      }
+    }
+  ]
+}

@@ -1,410 +1,296 @@
-import os
-import json
-import requests
-from typing import Dict, Any, List, Optional, Union
-from dotenv import load_dotenv
+#!/usr/bin/env python3
+"""
+RAGFlow客户端实现
+提供S3框架需要的核心检索功能
+"""
 
-# 加载环境变量
-load_dotenv()
+import requests
+import logging
+from typing import List, Dict, Any, Optional
+
+logger = logging.getLogger(__name__)
 
 class RAGFlowClient:
-    """RAGFlow API 客户端"""
+    """
+    RAGFlow客户端
     
-    def __init__(self, api_url: str = None, api_key: str = None):
+    职责：
+    - 知识库检索（retrieve_chunks）
+    - 数据集列表（list_datasets）
+    - 基础的数据集和文档管理
+    """
+    
+    def __init__(self, api_url: str, api_key: str, timeout: int = 30):
         """
-        初始化 RAGFlow API 客户端
+        初始化客户端
         
         Args:
-            api_url: RAGFlow API 的基础 URL
-            api_key: RAGFlow API 的认证密钥
+            api_url: RAGFlow API地址
+            api_key: API密钥
+            timeout: 请求超时时间（秒）
         """
-        self.api_url = api_url or os.getenv("RAGFLOW_API_URL")
-        self.api_key = api_key or os.getenv("RAGFLOW_API_KEY")
+        self.api_url = api_url.rstrip('/')
+        self.api_key = api_key
+        self.timeout = timeout
         
-        if not self.api_url:
-            raise ValueError("RAGFlow API URL 未设置")
-        if not self.api_key:
-            raise ValueError("RAGFlow API Key 未设置")
+        # 设置session
+        self.session = requests.Session()
+        self.session.headers.update({
+            'Authorization': f'Bearer {api_key}',
+            'Content-Type': 'application/json'
+        })
         
-        # 移除 URL 末尾的斜杠
-        self.api_url = self.api_url.rstrip("/")
-        
-        # 设置通用请求头
-        self.headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {self.api_key}"
-        }
-    
-    def _make_request(self, method: str, endpoint: str, data: Any = None, files: Any = None, 
-                     params: Dict = None, stream: bool = False) -> Union[Dict, requests.Response]:
-        """
-        发送 HTTP 请求到 RAGFlow API
-        
-        Args:
-            method: HTTP 方法 (GET, POST, PUT, DELETE)
-            endpoint: API 端点
-            data: 请求体数据
-            files: 文件数据 (用于上传文档)
-            params: URL 查询参数
-            stream: 是否以流的形式返回响应
-            
-        Returns:
-            如果 stream=True，返回原始 Response 对象；否则返回解析后的 JSON 数据
-        """
-        url = f"{self.api_url}{endpoint}"
-        
-        # 准备请求头
-        headers = self.headers.copy()
-        
-        # 如果有文件，不设置 Content-Type，让 requests 自动处理
-        if files:
-            headers.pop("Content-Type", None)
-        
-        # 发送请求
-        response = requests.request(
-            method=method,
-            url=url,
-            headers=headers,
-            json=data if data and not files else None,
-            files=files,
-            params=params,
-            stream=stream
+        # 增强连接稳定性和重试机制
+        retry_strategy = requests.adapters.Retry(
+            total=3,
+            backoff_factor=0.5,
+            status_forcelist=[500, 502, 503, 504, 408, 429]
         )
-        
-        # 检查响应状态
-        if not stream and not response.ok:
-            try:
-                error_data = response.json()
-                error_message = error_data.get("message", "未知错误")
-                error_code = error_data.get("code", 0)
-                raise Exception(f"RAGFlow API 错误 (代码 {error_code}): {error_message}")
-            except json.JSONDecodeError:
-                response.raise_for_status()
-        
-        # 返回响应
-        if stream:
-            return response
-        
-        return response.json()
-    
-    # =============== OpenAI 兼容 API ===============
-    
-    def create_chat_completion(self, chat_id: str, model: str, messages: List[Dict], stream: bool = False) -> Any:
-        """
-        创建聊天完成
-        
-        Args:
-            chat_id: 聊天助手 ID
-            model: 模型名称
-            messages: 消息列表
-            stream: 是否以流的形式返回响应
-            
-        Returns:
-            聊天完成响应
-        """
-        endpoint = f"/api/v1/chats_openai/{chat_id}/chat/completions"
-        data = {
-            "model": model,
-            "messages": messages,
-            "stream": stream
-        }
-        
-        return self._make_request("POST", endpoint, data, stream=stream)
-    
-    def create_agent_completion(self, agent_id: str, model: str, messages: List[Dict], stream: bool = False) -> Any:
-        """
-        创建 Agent 完成
-        
-        Args:
-            agent_id: Agent ID
-            model: 模型名称
-            messages: 消息列表
-            stream: 是否以流的形式返回响应
-            
-        Returns:
-            Agent 完成响应
-        """
-        endpoint = f"/api/v1/agents_openai/{agent_id}/chat/completions"
-        data = {
-            "model": model,
-            "messages": messages,
-            "stream": stream
-        }
-        
-        return self._make_request("POST", endpoint, data, stream=stream)
-    
-    # =============== 数据集管理 ===============
-    
-    def create_dataset(self, name: str, **kwargs) -> Dict:
-        """
-        创建数据集
-        
-        Args:
-            name: 数据集名称
-            **kwargs: 其他可选参数
-            
-        Returns:
-            创建结果
-        """
-        endpoint = "/api/v1/datasets"
-        data = {"name": name, **kwargs}
-        
-        return self._make_request("POST", endpoint, data)
-    
-    def delete_datasets(self, ids: List[str] = None) -> Dict:
-        """
-        删除数据集
-        
-        Args:
-            ids: 数据集 ID 列表，如果为 None 则删除所有数据集
-            
-        Returns:
-            删除结果
-        """
-        endpoint = "/api/v1/datasets"
-        data = {"ids": ids}
-        
-        return self._make_request("DELETE", endpoint, data)
-    
-    def update_dataset(self, dataset_id: str, **kwargs) -> Dict:
-        """
-        更新数据集
-        
-        Args:
-            dataset_id: 数据集 ID
-            **kwargs: 要更新的字段
-            
-        Returns:
-            更新结果
-        """
-        endpoint = f"/api/v1/datasets/{dataset_id}"
-        
-        return self._make_request("PUT", endpoint, kwargs)
-    
-    def list_datasets(self, page: int = 1, page_size: int = 30, orderby: str = "create_time", 
-                     desc: bool = True, name: str = None, id: str = None) -> Dict:
-        """
-        列出数据集
-        
-        Args:
-            page: 页码
-            page_size: 每页大小
-            orderby: 排序字段
-            desc: 是否降序排序
-            name: 按名称过滤
-            id: 按 ID 过滤
-            
-        Returns:
-            数据集列表
-        """
-        endpoint = "/api/v1/datasets"
-        params = {
-            "page": page,
-            "page_size": page_size,
-            "orderby": orderby,
-            "desc": desc
-        }
-        
-        if name:
-            params["name"] = name
-        if id:
-            params["id"] = id
-        
-        return self._make_request("GET", endpoint, params=params)
-    
-    # =============== 文档管理 ===============
-    
-    def upload_documents(self, dataset_id: str, file_paths: List[str]) -> Dict:
-        """
-        上传文档到数据集
-        
-        Args:
-            dataset_id: 数据集 ID
-            file_paths: 文件路径列表
-            
-        Returns:
-            上传结果
-        """
-        endpoint = f"/api/v1/datasets/{dataset_id}/documents"
-        
-        files = []
-        for file_path in file_paths:
-            file_name = os.path.basename(file_path)
-            files.append(('file', (file_name, open(file_path, 'rb'))))
-        
-        return self._make_request("POST", endpoint, files=files)
-    
-    def list_documents(self, dataset_id: str, page: int = 1, page_size: int = 30, 
-                      orderby: str = "create_time", desc: bool = True, 
-                      keywords: str = None, id: str = None, name: str = None) -> Dict:
-        """
-        列出数据集中的文档
-        
-        Args:
-            dataset_id: 数据集 ID
-            page: 页码
-            page_size: 每页大小
-            orderby: 排序字段
-            desc: 是否降序排序
-            keywords: 关键词过滤
-            id: 按 ID 过滤
-            name: 按名称过滤
-            
-        Returns:
-            文档列表
-        """
-        endpoint = f"/api/v1/datasets/{dataset_id}/documents"
-        params = {
-            "page": page,
-            "page_size": page_size,
-            "orderby": orderby,
-            "desc": desc
-        }
-        
-        if keywords:
-            params["keywords"] = keywords
-        if id:
-            params["id"] = id
-        if name:
-            params["name"] = name
-        
-        return self._make_request("GET", endpoint, params=params)
-    
-    def delete_documents(self, dataset_id: str, document_ids: List[str] = None) -> Dict:
-        """
-        删除数据集中的文档
-        
-        Args:
-            dataset_id: 数据集 ID
-            document_ids: 文档 ID 列表，如果为 None 则删除所有文档
-            
-        Returns:
-            删除结果
-        """
-        endpoint = f"/api/v1/datasets/{dataset_id}/documents"
-        data = {"ids": document_ids}
-        
-        return self._make_request("DELETE", endpoint, data)
-    
-    def parse_documents(self, dataset_id: str, document_ids: List[str]) -> Dict:
-        """
-        解析文档
-        
-        Args:
-            dataset_id: 数据集 ID
-            document_ids: 文档 ID 列表
-            
-        Returns:
-            解析结果
-        """
-        endpoint = f"/api/v1/datasets/{dataset_id}/chunks"
-        data = {"document_ids": document_ids}
-        
-        return self._make_request("POST", endpoint, data)
-    
-    def download_document(self, dataset_id: str, document_id: str) -> bytes:
-        """
-        下载文档的原始文件
-        
-        Args:
-            dataset_id: 数据集ID
-            document_id: 文档ID
-            
-        Returns:
-            文件内容的字节数据
-        """
-        endpoint = f"/api/v1/datasets/{dataset_id}/documents/{document_id}"
-        
-        response = self.session.get(
-            f"{self.base_url}{endpoint}",
-            headers=self.headers,
-            timeout=self.timeout
+        adapter = requests.adapters.HTTPAdapter(
+            pool_connections=10,
+            pool_maxsize=10,
+            max_retries=retry_strategy
         )
+        self.session.mount('http://', adapter)
+        self.session.mount('https://', adapter)
         
-        # 如果响应是JSON格式（错误响应），则抛出异常
-        try:
-            error_data = response.json()
-            if 'code' in error_data and error_data['code'] != 0:
-                raise ValueError(f"下载失败: {error_data.get('message', 'Unknown error')}")
-        except ValueError:
-            # 不是JSON响应，说明是文件内容
-            pass
+        # 代理配置（如果需要）
+        self._setup_proxy()
         
-        response.raise_for_status()
-        return response.content
+        logger.info(f"RAGFlow客户端初始化: {api_url}")
     
-    def get_document_status(self, dataset_id: str, document_id: str) -> Optional[Dict]:
+    def _setup_proxy(self):
+        """设置代理（如果环境变量中有配置）"""
+        import os
+        if os.getenv('HTTP_PROXY'):
+            self.session.proxies = {
+                'http': os.getenv('HTTP_PROXY'),
+                'https': os.getenv('HTTPS_PROXY', os.getenv('HTTP_PROXY'))
+            }
+            logger.info("使用代理配置")
+    
+    def retrieve_chunks(self, 
+                       question: str, 
+                       dataset_ids: List[str],
+                       page: int = 1,
+                       page_size: int = 10,
+                       similarity_threshold: float = 0.1) -> Dict[str, Any]:
         """
-        获取单个文档的状态信息
+        检索相关文档片段 - S3框架的核心需求
         
         Args:
-            dataset_id: 数据集ID
-            document_id: 文档ID
-            
-        Returns:
-            文档信息字典，包含status、progress等字段，如果文档不存在则返回None
-        """
-        # 通过列表接口获取特定文档
-        response = self.list_documents(
-            dataset_id=dataset_id,
-            id=document_id,
-            page_size=1
-        )
-        
-        if response.get('code') == 0 and response.get('data'):
-            documents = response['data']
-            if documents and len(documents) > 0:
-                return documents[0]
-        
-        return None
-    
-    # =============== 检索 ===============
-    
-    def retrieve_chunks(self, question: str, dataset_ids: List[str] = None, 
-                       document_ids: List[str] = None, page: int = 1, 
-                       page_size: int = 30, similarity_threshold: float = 0.2,
-                       vector_similarity_weight: float = 0.3, top_k: int = 1024,
-                       rerank_id: str = None, keyword: bool = False, 
-                       highlight: bool = False):
-        """
-        检索文本块
-        
-        Args:
-            question: 查询问题
+            question: 检索查询
             dataset_ids: 数据集ID列表
-            document_ids: 文档ID列表
-            page: 页码，默认1
-            page_size: 每页大小，默认30
-            similarity_threshold: 相似度阈值，默认0.2
-            vector_similarity_weight: 向量相似度权重，默认0.3
-            top_k: 向量计算的块数量，默认1024
-            rerank_id: 重排序模型ID
-            keyword: 是否启用关键词匹配，默认False
-            highlight: 是否启用高亮，默认False
+            page: 页码
+            page_size: 返回结果数量
+            similarity_threshold: 相似度阈值
+            
+        Returns:
+            检索结果，格式：
+            {
+                "code": 0,
+                "data": {
+                    "chunks": [
+                        {
+                            "content": "文档内容",
+                            "document_name": "文档名",
+                            "dataset_id": "数据集ID",
+                            "similarity": 0.95
+                        }
+                    ]
+                }
+            }
         """
-        # 构建请求体
-        data = {
+        url = f"{self.api_url}/api/v1/retrieval"
+        
+        payload = {
             "question": question,
+            "dataset_ids": dataset_ids,
             "page": page,
             "page_size": page_size,
             "similarity_threshold": similarity_threshold,
-            "vector_similarity_weight": vector_similarity_weight,
-            "top_k": top_k,
-            "keyword": keyword,
-            "highlight": highlight
+            "vector_similarity_weight": 0.7
         }
         
-        # 只添加非空的ID列表
-        if dataset_ids:
-            data["dataset_ids"] = dataset_ids
-        if document_ids:
-            data["document_ids"] = document_ids
-        if rerank_id:
-            data["rerank_id"] = rerank_id
+        try:
+            response = self.session.post(url, json=payload, timeout=self.timeout)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            logger.error(f"检索失败: {e}")
+            return {
+                "code": -1,
+                "message": str(e),
+                "data": {"chunks": []}
+            }
+    
+    def list_datasets(self, page: int = 1, page_size: int = 12, name: str = None) -> Dict[str, Any]:
+        """
+        获取数据集列表
         
-        # 确保至少有一个ID列表
-        if not dataset_ids and not document_ids:
-            raise ValueError("Either dataset_ids or document_ids must be provided")
+        Args:
+            page: 页码
+            page_size: 每页数量
+            name: 名称筛选（可选）
+            
+        Returns:
+            数据集列表响应
+        """
+        url = f"{self.api_url}/api/v1/datasets"
         
-        response = self._make_request("POST", "/api/v1/retrieval", data)
-        return response
+        params = {
+            "page": page,
+            "page_size": page_size
+        }
+        
+        if name:
+            params["name"] = name
+        
+        try:
+            response = self.session.get(url, params=params, timeout=self.timeout)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            logger.error(f"获取数据集列表失败: {e}")
+            return {"code": -1, "message": str(e)}
+    
+    def create_dataset(self, name: str, description: str = None, embedding_model: str = "BAAI/bge-m3@SILICONFLOW", 
+                      chunk_method: str = "naive", parser_config: Dict[str, Any] = None) -> Dict[str, Any]:
+        """创建知识库"""
+        url = f"{self.api_url}/api/v1/datasets"
+        
+        data = {
+            "name": name,
+            "description": description,
+            "embedding_model": embedding_model,
+            "chunk_method": chunk_method,
+            "parser_config": parser_config or {
+                "chunk_token_num": 512,
+                "delimiter": "\n"
+            }
+        }
+        
+        try:
+            response = self.session.post(url, json=data, timeout=self.timeout)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            logger.error(f"创建知识库失败: {e}")
+            return {"code": 500, "message": str(e), "data": None}
+    
+    def update_dataset(self, dataset_id: str, **kwargs) -> Dict[str, Any]:
+        """更新知识库"""
+        url = f"{self.api_url}/api/v1/datasets/{dataset_id}"
+        
+        try:
+            response = self.session.put(url, json=kwargs, timeout=self.timeout)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            logger.error(f"更新知识库失败: {e}")
+            return {"code": 500, "message": str(e), "data": None}
+    
+    def delete_datasets(self, dataset_ids: List[str]) -> Dict[str, Any]:
+        """删除知识库"""
+        # 删除单个知识库
+        if len(dataset_ids) == 1:
+            url = f"{self.api_url}/api/v1/datasets/{dataset_ids[0]}"
+            try:
+                response = self.session.delete(url, timeout=self.timeout)
+                response.raise_for_status()
+                return response.json()
+            except requests.exceptions.RequestException as e:
+                logger.error(f"删除知识库失败: {e}")
+                return {"code": 500, "message": str(e), "data": None}
+        else:
+            # 批量删除暂不支持
+            return {"code": 400, "message": "批量删除暂不支持", "data": None}
+    
+    def upload_documents(self, dataset_id: str, file_paths: List[str]) -> Dict[str, Any]:
+        """上传文档到知识库"""
+        url = f"{self.api_url}/api/v1/datasets/{dataset_id}/documents"
+        
+        try:
+            # 目前只支持单文件上传
+            if len(file_paths) == 1:
+                file_path = file_paths[0]
+                with open(file_path, 'rb') as f:
+                    files = {'file': f}
+                    # 临时移除Content-Type以支持multipart
+                    headers = {'Authorization': self.session.headers['Authorization']}
+                    response = requests.post(url, files=files, headers=headers, timeout=self.timeout)
+                    response.raise_for_status()
+                    return response.json()
+            else:
+                return {"code": 400, "message": "暂时只支持单文件上传", "data": None}
+        except requests.exceptions.RequestException as e:
+            logger.error(f"上传文档失败: {e}")
+            return {"code": 500, "message": str(e), "data": None}
+    
+    def list_documents(self, dataset_id: str, page: int = 1, page_size: int = 20) -> Dict[str, Any]:
+        """获取文档列表"""
+        url = f"{self.api_url}/api/v1/datasets/{dataset_id}/documents"
+        
+        params = {
+            "page": page,
+            "page_size": page_size
+        }
+        
+        try:
+            response = self.session.get(url, params=params, timeout=self.timeout)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            logger.error(f"获取文档列表失败: {e}")
+            return {"code": 500, "message": str(e), "data": None}
+    
+    def delete_documents(self, dataset_id: str, document_ids: List[str]) -> Dict[str, Any]:
+        """删除文档"""
+        if len(document_ids) == 1:
+            # 单个文档删除
+            url = f"{self.api_url}/api/v1/datasets/{dataset_id}/documents/{document_ids[0]}"
+            try:
+                response = self.session.delete(url, timeout=self.timeout)
+                response.raise_for_status()
+                return response.json()
+            except requests.exceptions.RequestException as e:
+                logger.error(f"删除文档失败: {e}")
+                return {"code": 500, "message": str(e), "data": None}
+        else:
+            # 批量删除文档
+            url = f"{self.api_url}/api/v1/datasets/{dataset_id}/documents"
+            data = {"ids": document_ids}
+            try:
+                response = self.session.delete(url, json=data, timeout=self.timeout)
+                response.raise_for_status()
+                return response.json()
+            except requests.exceptions.RequestException as e:
+                logger.error(f"批量删除文档失败: {e}")
+                return {"code": 500, "message": str(e), "data": None}
+    
+    def get_document_content(self, dataset_id: str, document_id: str) -> str:
+        """获取文档内容"""
+        url = f"{self.api_url}/api/v1/datasets/{dataset_id}/documents/{document_id}"
+        
+        try:
+            response = self.session.get(url, timeout=self.timeout)
+            response.raise_for_status()
+            return response.text  # 返回原始文本内容
+        except requests.exceptions.RequestException as e:
+            logger.error(f"获取文档内容失败: {e}")
+            raise e
+    
+    def download_document(self, dataset_id: str, document_id: str) -> bytes:
+        """下载文档"""
+        url = f"{self.api_url}/api/v1/datasets/{dataset_id}/documents/{document_id}/download"
+        
+        try:
+            response = self.session.get(url, timeout=self.timeout)
+            response.raise_for_status()
+            return response.content  # 返回二进制内容
+        except requests.exceptions.RequestException as e:
+            logger.error(f"下载文档失败: {e}")
+            raise e
+
+    def __repr__(self):
+        return f"RAGFlowClient(api_url='{self.api_url}')"

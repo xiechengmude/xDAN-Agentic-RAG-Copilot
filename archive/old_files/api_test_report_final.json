@@ -1,0 +1,211 @@
+{
+  "test_summary": {
+    "total_tests": 3,
+    "passed_tests": 2,
+    "failed_tests": 1,
+    "success_rate": 66.66666666666666,
+    "timestamp": "2025-06-26T12:32:17.071704"
+  },
+  "detailed_results": [
+    {
+      "test_name": "健康检查",
+      "success": true,
+      "timestamp": "2025-06-26T12:32:16.708194",
+      "response_data": {
+        "code": 0,
+        "message": "Success",
+        "data": {
+          "status": "healthy",
+          "service": "xDAN RAG Copilot API Proxy V4",
+          "timestamp": "2025-06-26T12:32:16.707755",
+          "features": [
+            "document_upload",
+            "retry_mechanism",
+            "status_query",
+            "response_optimization"
+          ]
+        }
+      },
+      "error": null
+    },
+    {
+      "test_name": "获取数据集列表",
+      "success": true,
+      "timestamp": "2025-06-26T12:32:16.874973",
+      "response_data": {
+        "code": 0,
+        "message": "Success",
+        "data": [
+          {
+            "id": "5978d52451aa11f0b1e70242ac140006",
+            "name": "分析测试_1750845253",
+            "description": "用于分析响应大小",
+            "document_count": 0,
+            "chunk_count": 0,
+            "token_count": 0,
+            "language": "English",
+            "created_at": "Wed, 25 Jun 2025 17:54:13 GMT",
+            "updated_at": "Wed, 25 Jun 2025 17:54:13 GMT",
+            "status": "1"
+          },
+          {
+            "id": "08c88df051a411f08b900242ac140006",
+            "name": "第三方测试数据集_1750842540",
+            "description": "第三方客户端测试用数据集",
+            "document_count": 0,
+            "chunk_count": 0,
+            "token_count": 0,
+            "language": "English",
+            "created_at": "Wed, 25 Jun 2025 17:09:01 GMT",
+            "updated_at": "Wed, 25 Jun 2025 17:09:01 GMT",
+            "status": "1"
+          },
+          {
+            "id": "1d27360c519a11f0a8180242ac140006",
+            "name": "第三方测试数据集_1750838279",
+            "description": "第三方客户端测试用数据集",
+            "document_count": 0,
+            "chunk_count": 0,
+            "token_count": 0,
+            "language": "English",
+            "created_at": "Wed, 25 Jun 2025 15:58:00 GMT",
+            "updated_at": "Wed, 25 Jun 2025 15:58:00 GMT",
+            "status": "1"
+          },
+          {
+            "id": "fe266fca519911f086a90242ac140006",
+            "name": "第三方测试数据集_1750838227",
+            "description": "第三方客户端测试用数据集",
+            "document_count": 0,
+            "chunk_count": 0,
+            "token_count": 0,
+            "language": "English",
+            "created_at": "Wed, 25 Jun 2025 15:57:08 GMT",
+            "updated_at": "Wed, 25 Jun 2025 15:57:08 GMT",
+            "status": "1"
+          },
+          {
+            "id": "ab728efe518911f081830242ac140006",
+            "name": "第三方测试数据集_1750831216",
+            "description": "第三方客户端测试用数据集",
+            "document_count": 0,
+            "chunk_count": 0,
+            "token_count": 0,
+            "language": "English",
+            "created_at": "Wed, 25 Jun 2025 14:00:17 GMT",
+            "updated_at": "Wed, 25 Jun 2025 14:00:17 GMT",
+            "status": "1"
+          },
+          {
+            "id": "94ebb35a517411f0875f0242ac140006",
+            "name": "第三方测试数据集_1750822159",
+            "description": "第三方客户端测试用数据集",
+            "document_count": 0,
+            "chunk_count": 0,
+            "token_count": 0,
+            "language": "English",
+            "created_at": "Wed, 25 Jun 2025 11:29:20 GMT",
+            "updated_at": "Wed, 25 Jun 2025 11:29:20 GMT",
+            "status": "1"
+          },
+          {
+            "id": "86b2357a517411f0ba340242ac140006",
+            "name": "调试测试数据集",
+            "description": "用于调试的测试数据集",
+            "document_count": 0,
+            "chunk_count": 0,
+            "token_count": 0,
+            "language": "English",
+            "created_at": "Wed, 25 Jun 2025 11:28:56 GMT",
+            "updated_at": "Wed, 25 Jun 2025 11:28:56 GMT",
+            "status": "1"
+          },
+          {
+            "id": "29a8f5924feb11f0a67a0242ac140006",
+            "name": "API测试_0623_123308",
+            "description": "API全链路测试知识库",
+            "document_count": 0,
+            "chunk_count": 0,
+            "token_count": 0,
+            "language": "English",
+            "created_at": "Mon, 23 Jun 2025 12:33:08 GMT",
+            "updated_at": "Mon, 23 Jun 2025 12:33:08 GMT",
+            "status": "1"
+          },
+          {
+            "id": "b66e12c44fea11f0bc4e0242ac140006",
+            "name": "全链路测试知识库_0623_122954",
+            "description": "用于全链路API测试的知识库",
+            "document_count": 0,
+            "chunk_count": 0,
+            "token_count": 0,
+            "language": "English",
+            "created_at": "Mon, 23 Jun 2025 12:29:55 GMT",
+            "updated_at": "Mon, 23 Jun 2025 12:29:55 GMT",
+            "status": "1"
+          },
+          {
+            "id": "96f213004fea11f096400242ac140006",
+            "name": "全链路测试知识库_0623_122901",
+            "description": "用于全链路API测试的知识库",
+            "document_count": 0,
+            "chunk_count": 0,
+            "token_count": 0,
+            "language": "English",
+            "created_at": "Mon, 23 Jun 2025 12:29:02 GMT",
+            "updated_at": "Mon, 23 Jun 2025 12:29:03 GMT",
+            "status": "1"
+          },
+          {
+            "id": "7e9fe1de4ce211f09cf90242ac140006",
+            "name": "test",
+            "description": "更新于 2025-06-23 10:27:39.094328",
+            "document_count": 0,
+            "chunk_count": 0,
+            "token_count": 1614,
+            "language": "English",
+            "created_at": "Thu, 19 Jun 2025 15:53:31 GMT",
+            "updated_at": "Mon, 23 Jun 2025 10:32:26 GMT",
+            "status": "1"
+          },
+          {
+            "id": "7e8d9e924cde11f0afc90242ac140006",
+            "name": "360test00000",
+            "description": "as",
+            "document_count": 0,
+            "chunk_count": 0,
+            "token_count": 46759,
+            "language": "English",
+            "created_at": "Thu, 19 Jun 2025 15:24:53 GMT",
+            "updated_at": "Mon, 23 Jun 2025 09:18:35 GMT",
+            "status": "1"
+          }
+        ],
+        "meta": {
+          "page": 1,
+          "page_size": 10,
+          "total": 12
+        }
+      },
+      "error": null
+    },
+    {
+      "test_name": "创建数据集",
+      "success": false,
+      "timestamp": "2025-06-26T12:32:17.071385",
+      "response_data": {
+        "detail": {
+          "code": 400,
+          "message": "Field: <embedding_model> - Message: <Embedding model identifier must follow <model_name>@<provider> format> - Value: <BAAI/bge-large-zh-v1.5>\nField: <parser_config.layout_recognize> - Message: <Input should be a valid string> - Value: <True>",
+          "data": null
+        }
+      },
+      "error": null
+    }
+  ],
+  "created_resources": {
+    "datasets": [],
+    "chats": [],
+    "documents": []
+  }
+}

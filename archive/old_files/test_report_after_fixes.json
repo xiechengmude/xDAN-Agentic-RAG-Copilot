@@ -1,0 +1,348 @@
+{
+  "test_summary": {
+    "total_tests": 11,
+    "passed_tests": 9,
+    "failed_tests": 2,
+    "success_rate": 81.81818181818183,
+    "timestamp": "2025-06-26T13:24:28.346695",
+    "default_dataset": "7e8d9e924cde11f0afc90242ac140006",
+    "fixes_applied": [
+      "添加数据集详情路由",
+      "修复文档列表字符串处理",
+      "添加检索功能路由",
+      "修复聊天参数格式",
+      "添加兼容性聊天模式"
+    ]
+  },
+  "detailed_results": [
+    {
+      "test_name": "健康检查",
+      "success": true,
+      "timestamp": "2025-06-26T13:24:23.583673",
+      "response_data": {
+        "code": 0,
+        "message": "Success",
+        "data": {
+          "status": "healthy",
+          "service": "xDAN RAG Copilot API Proxy V4",
+          "timestamp": "2025-06-26T13:24:23.583237",
+          "features": [
+            "document_upload",
+            "retry_mechanism",
+            "status_query",
+            "response_optimization"
+          ]
+        }
+      },
+      "error": null
+    },
+    {
+      "test_name": "获取数据集列表",
+      "success": true,
+      "timestamp": "2025-06-26T13:24:24.024003",
+      "response_data": {
+        "code": 0,
+        "message": "Success",
+        "data": [
+          {
+            "id": "5978d52451aa11f0b1e70242ac140006",
+            "name": "分析测试_1750845253",
+            "description": "用于分析响应大小",
+            "document_count": 0,
+            "chunk_count": 0,
+            "token_count": 0,
+            "language": "English",
+            "created_at": "Wed, 25 Jun 2025 17:54:13 GMT",
+            "updated_at": "Thu, 26 Jun 2025 12:40:08 GMT",
+            "status": "1"
+          },
+          {
+            "id": "08c88df051a411f08b900242ac140006",
+            "name": "第三方测试数据集_1750842540",
+            "description": "第三方客户端测试用数据集",
+            "document_count": 0,
+            "chunk_count": 0,
+            "token_count": 0,
+            "language": "English",
+            "created_at": "Wed, 25 Jun 2025 17:09:01 GMT",
+            "updated_at": "Wed, 25 Jun 2025 17:09:01 GMT",
+            "status": "1"
+          },
+          {
+            "id": "1d27360c519a11f0a8180242ac140006",
+            "name": "第三方测试数据集_1750838279",
+            "description": "第三方客户端测试用数据集",
+            "document_count": 0,
+            "chunk_count": 0,
+            "token_count": 0,
+            "language": "English",
+            "created_at": "Wed, 25 Jun 2025 15:58:00 GMT",
+            "updated_at": "Wed, 25 Jun 2025 15:58:00 GMT",
+            "status": "1"
+          },
+          {
+            "id": "fe266fca519911f086a90242ac140006",
+            "name": "第三方测试数据集_1750838227",
+            "description": "第三方客户端测试用数据集",
+            "document_count": 0,
+            "chunk_count": 0,
+            "token_count": 0,
+            "language": "English",
+            "created_at": "Wed, 25 Jun 2025 15:57:08 GMT",
+            "updated_at": "Wed, 25 Jun 2025 15:57:08 GMT",
+            "status": "1"
+          },
+          {
+            "id": "ab728efe518911f081830242ac140006",
+            "name": "第三方测试数据集_1750831216",
+            "description": "第三方客户端测试用数据集",
+            "document_count": 0,
+            "chunk_count": 0,
+            "token_count": 0,
+            "language": "English",
+            "created_at": "Wed, 25 Jun 2025 14:00:17 GMT",
+            "updated_at": "Wed, 25 Jun 2025 14:00:17 GMT",
+            "status": "1"
+          },
+          {
+            "id": "94ebb35a517411f0875f0242ac140006",
+            "name": "第三方测试数据集_1750822159",
+            "description": "第三方客户端测试用数据集",
+            "document_count": 0,
+            "chunk_count": 0,
+            "token_count": 0,
+            "language": "English",
+            "created_at": "Wed, 25 Jun 2025 11:29:20 GMT",
+            "updated_at": "Wed, 25 Jun 2025 11:29:20 GMT",
+            "status": "1"
+          },
+          {
+            "id": "86b2357a517411f0ba340242ac140006",
+            "name": "调试测试数据集",
+            "description": "用于调试的测试数据集",
+            "document_count": 0,
+            "chunk_count": 0,
+            "token_count": 0,
+            "language": "English",
+            "created_at": "Wed, 25 Jun 2025 11:28:56 GMT",
+            "updated_at": "Wed, 25 Jun 2025 11:28:56 GMT",
+            "status": "1"
+          },
+          {
+            "id": "29a8f5924feb11f0a67a0242ac140006",
+            "name": "API测试_0623_123308",
+            "description": "API全链路测试知识库",
+            "document_count": 0,
+            "chunk_count": 0,
+            "token_count": 0,
+            "language": "English",
+            "created_at": "Mon, 23 Jun 2025 12:33:08 GMT",
+            "updated_at": "Mon, 23 Jun 2025 12:33:08 GMT",
+            "status": "1"
+          },
+          {
+            "id": "b66e12c44fea11f0bc4e0242ac140006",
+            "name": "全链路测试知识库_0623_122954",
+            "description": "用于全链路API测试的知识库",
+            "document_count": 0,
+            "chunk_count": 0,
+            "token_count": 0,
+            "language": "English",
+            "created_at": "Mon, 23 Jun 2025 12:29:55 GMT",
+            "updated_at": "Mon, 23 Jun 2025 12:29:55 GMT",
+            "status": "1"
+          },
+          {
+            "id": "96f213004fea11f096400242ac140006",
+            "name": "全链路测试知识库_0623_122901",
+            "description": "用于全链路API测试的知识库",
+            "document_count": 0,
+            "chunk_count": 0,
+            "token_count": 0,
+            "language": "English",
+            "created_at": "Mon, 23 Jun 2025 12:29:02 GMT",
+            "updated_at": "Mon, 23 Jun 2025 12:29:03 GMT",
+            "status": "1"
+          }
+        ],
+        "meta": {
+          "page": 1,
+          "page_size": 10,
+          "total": 10
+        }
+      },
+      "error": null
+    },
+    {
+      "test_name": "获取数据集详情",
+      "success": true,
+      "timestamp": "2025-06-26T13:24:24.431083",
+      "response_data": {
+        "code": 0,
+        "message": "Success",
+        "data": {
+          "id": "7e8d9e924cde11f0afc90242ac140006",
+          "name": "360test00000",
+          "description": "as",
+          "document_count": 0,
+          "chunk_count": 0,
+          "token_count": 46759,
+          "language": "English",
+          "created_at": "Thu, 19 Jun 2025 15:24:53 GMT",
+          "updated_at": "Mon, 23 Jun 2025 09:18:35 GMT",
+          "status": "1",
+          "rag_availability": {
+            "status": "empty",
+            "message": "数据集为空，需要上传文档",
+            "can_chat": false,
+            "can_retrieve": false
+          }
+        }
+      },
+      "error": null
+    },
+    {
+      "test_name": "获取文档列表",
+      "success": true,
+      "timestamp": "2025-06-26T13:24:24.828129",
+      "response_data": {
+        "code": 0,
+        "message": "Success",
+        "data": [],
+        "meta": {
+          "page": 1,
+          "page_size": 10,
+          "total": 0
+        }
+      },
+      "error": null
+    },
+    {
+      "test_name": "检索功能",
+      "success": true,
+      "timestamp": "2025-06-26T13:24:25.282441",
+      "response_data": {
+        "code": 0,
+        "message": "Success",
+        "data": {
+          "chunks": [],
+          "total": 0,
+          "message": "所选数据集均无可检索内容，请先上传并解析文档"
+        }
+      },
+      "error": null
+    },
+    {
+      "test_name": "创建RAG聊天",
+      "success": true,
+      "timestamp": "2025-06-26T13:24:26.109190",
+      "response_data": {
+        "code": 0,
+        "message": "Success",
+        "data": {
+          "id": "d359ca44524d11f096630242ac140006",
+          "name": "RAG聊天测试_1750915465",
+          "description": "测试RAG模式聊天",
+          "create_date": "Thu, 26 Jun 2025 13:24:26 GMT",
+          "update_date": "Thu, 26 Jun 2025 13:24:26 GMT",
+          "status": "1",
+          "language": "English",
+          "llm_model": "deepseek-ai/DeepSeek-V3@SILICONFLOW",
+          "prompt_type": "simple",
+          "chat_mode": "basic",
+          "available_datasets": [],
+          "unavailable_datasets": [
+            {
+              "id": "7e8d9e924cde11f0afc90242ac140006",
+              "reason": "error",
+              "message": "检查失败: 400: {'code': 400, 'message': \"<MethodNotAllowed '405: Method Not Allowed'>\", 'data': None}"
+            }
+          ],
+          "capabilities": {
+            "rag_enabled": false,
+            "basic_chat": true,
+            "document_search": false
+          }
+        }
+      },
+      "error": null
+    },
+    {
+      "test_name": "RAG聊天对话",
+      "success": true,
+      "timestamp": "2025-06-26T13:24:26.534946",
+      "response_data": {
+        "code": 0,
+        "message": "Success",
+        "data": {
+          "id": "msg_e8c37844-e111-46ca-8f27-b4df8ad4286c",
+          "chat_id": "d359ca44524d11f096630242ac140006",
+          "content": "data:{\"code\": 0, \"message\": \"\", \"data\": {\"answer\": \"Hi! I'm your assistant, what can I do for you?\", \"reference\": {}, \"audio_binary\": null, \"id\": null, \"session_id\": \"d39c1390524d11f0b7650242ac140006\"}}\n\n",
+          "references": [],
+          "created_at": "2025-06-26T13:24:26.534483"
+        }
+      },
+      "error": null
+    },
+    {
+      "test_name": "RAG流式聊天",
+      "success": false,
+      "timestamp": "2025-06-26T13:24:26.987858",
+      "response_data": "HTTP 503",
+      "error": null
+    },
+    {
+      "test_name": "创建基础聊天",
+      "success": true,
+      "timestamp": "2025-06-26T13:24:27.405098",
+      "response_data": {
+        "code": 0,
+        "message": "Success",
+        "data": {
+          "id": "d420c3d8524d11f08eaf0242ac140006",
+          "name": "基础聊天测试_1750915466",
+          "description": "测试基础LLM模式聊天",
+          "create_date": "Thu, 26 Jun 2025 13:24:27 GMT",
+          "update_date": "Thu, 26 Jun 2025 13:24:27 GMT",
+          "status": "1",
+          "language": "English",
+          "llm_model": "deepseek-ai/DeepSeek-V3@SILICONFLOW",
+          "prompt_type": "simple",
+          "chat_mode": "basic",
+          "available_datasets": [],
+          "unavailable_datasets": [],
+          "capabilities": {
+            "rag_enabled": false,
+            "basic_chat": true,
+            "document_search": false
+          }
+        }
+      },
+      "error": null
+    },
+    {
+      "test_name": "基础聊天对话",
+      "success": true,
+      "timestamp": "2025-06-26T13:24:27.813311",
+      "response_data": {
+        "code": 0,
+        "message": "Success",
+        "data": {
+          "id": "msg_a48fa519-b92e-46d2-ad7d-7018b206c773",
+          "chat_id": "d420c3d8524d11f08eaf0242ac140006",
+          "content": "data:{\"code\": 0, \"message\": \"\", \"data\": {\"answer\": \"Hi! I'm your assistant, what can I do for you?\", \"reference\": {}, \"audio_binary\": null, \"id\": null, \"session_id\": \"d45f4554524d11f08eb00242ac140006\"}}\n\n",
+          "references": [],
+          "created_at": "2025-06-26T13:24:27.812915"
+        }
+      },
+      "error": null
+    },
+    {
+      "test_name": "基础流式聊天",
+      "success": false,
+      "timestamp": "2025-06-26T13:24:28.346205",
+      "response_data": "HTTP 503",
+      "error": null
+    }
+  ]
+}

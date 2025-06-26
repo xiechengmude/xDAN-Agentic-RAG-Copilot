@@ -1,7 +1,9 @@
-"""客户端模块"""
+"""
+客户端模块
+提供LLM和RAGFlow客户端接口
+"""
 
 from .ragflow_client import RAGFlowClient
-from .ragflow_sdk_wrapper import RAGFlowSDKWrapper
-from .llm_client import LLMClient
+from .litellm_client import LiteLLMSDKClientV2
 
-__all__ = ['RAGFlowClient', 'RAGFlowSDKWrapper', 'LLMClient']
+__all__ = ['RAGFlowClient', 'LiteLLMSDKClientV2']

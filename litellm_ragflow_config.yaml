@@ -1,0 +1,123 @@
+# LiteLLM + RAGFlow 集成配置
+# 实现理想架构：用户请求 → LiteLLM → RAGFlow检索 → 多模型选择 → 流式响应
+
+model_list:
+  # OpenAI Models
+  - model_name: gpt-4o
+    litellm_params:
+      model: gpt-4o
+      api_key: os.environ/OPENAI_API_KEY
+    model_info:
+      mode: chat
+      supports_function_calling: true
+      supports_streaming: true
+
+  - model_name: gpt-4o-mini
+    litellm_params:
+      model: gpt-4o-mini  
+      api_key: os.environ/OPENAI_API_KEY
+    model_info:
+      mode: chat
+      supports_function_calling: true
+      supports_streaming: true
+      cost_per_token: 0.000001  # 更便宜的选项
+
+  # Anthropic Models
+  - model_name: claude-3-5-sonnet
+    litellm_params:
+      model: anthropic/claude-3-5-sonnet-20241022
+      api_key: os.environ/ANTHROPIC_API_KEY
+    model_info:
+      mode: chat
+      supports_function_calling: true
+      supports_streaming: true
+
+  # DeepSeek Models (高性价比)
+  - model_name: deepseek-chat
+    litellm_params:
+      model: deepseek/deepseek-chat
+      api_key: os.environ/DEEPSEEK_API_KEY
+      base_url: https://api.deepseek.com/v1
+    model_info:
+      mode: chat
+      supports_function_calling: true
+      supports_streaming: true
+      cost_per_token: 0.0000001  # 极低成本
+
+  # 本地模型 (如果需要)
+  - model_name: local-ragflow-model
+    litellm_params:
+      model: openai/local-model
+      base_url: http://51.159.189.105:7032/v1
+      api_key: not-required
+    model_info:
+      mode: chat
+      supports_function_calling: true
+      supports_streaming: true
+      cost_per_token: 0  # 本地免费
+
+# 路由配置 - 智能模型选择
+router_settings:
+  routing_strategy: "cost-based"  # 基于成本的路由
+  fallbacks:
+    - gpt-4o-mini
+    - deepseek-chat
+    - local-ragflow-model
+  
+  # 负载均衡
+  model_group_alias:
+    cheap_models: ["gpt-4o-mini", "deepseek-chat"]
+    premium_models: ["gpt-4o", "claude-3-5-sonnet"]
+    local_models: ["local-ragflow-model"]
+
+# RAGFlow 函数调用配置
+functions:
+  - name: ragflow_retrieve
+    description: "Retrieve relevant documents from RAGFlow knowledge base"
+    parameters:
+      type: object
+      properties:
+        question:
+          type: string
+          description: "The question to search for relevant documents"
+        dataset_ids:
+          type: array
+          items:
+            type: string
+          description: "List of dataset IDs to search in"
+        top_k:
+          type: integer
+          default: 5
+          description: "Number of top relevant chunks to retrieve"
+      required: ["question"]
+    
+    # RAGFlow API调用配置
+    implementation:
+      type: http_request
+      url: http://localhost:8055/api/v1/retrieval
+      method: POST
+      headers:
+        Authorization: "Bearer xdan-key-001"
+        Content-Type: "application/json"
+      timeout: 30
+
+# 缓存配置
+cache:
+  type: redis
+  host: localhost
+  port: 6379
+  ttl: 3600  # 1小时缓存
+
+# 日志和监控
+logging_config:
+  level: INFO
+  
+callbacks:
+  - langfuse  # 可选：集成Langfuse进行监控
+
+# 安全设置
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
+  allowed_origins: ["*"]
+  enable_function_calling: true
+  enable_streaming: true

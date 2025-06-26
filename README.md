@@ -1,16 +1,17 @@
-# RAGFlow API Client
+# xDAN Rag Copilot API Service
 
-基于RAGFlow API的知识库管理系统，提供完整的文档处理、检索和对话功能。
+基于S3框架（Search-Select-Synthesize）和RAGFlow的智能知识库问答系统，提供完整的文档处理、智能检索和对话功能。
 
 ## 🌟 特性
 
+- **S3智能框架**：Search-Select-Synthesize三阶段智能问答
 - **知识库管理**：完整的知识库CRUD操作
 - **文档处理**：支持文档上传、解析、状态跟踪
-- **智能问答**：基于知识库的实时流式对话
+- **智能问答**：基于S3框架的多轮迭代搜索和精准回答
+- **统一LLM管理**：通过LiteLLM统一管理多个模型
 - **语义检索**：高精度的文档内容检索
 - **实时通信**：使用Server-Sent Events提供实时状态更新
-- **现代化前端**：React 19 + TypeScript + Vite
-- **完整API测试**：100%接口验证通过
+- **现代化架构**：清晰的分层架构，易于扩展和维护
 
 ## 🚀 快速开始
 
@@ -28,33 +29,43 @@ cd ragflow-api-client
 
 ### 2. 环境配置
 
-创建并配置环境变量文件：
+#### 配置文件（推荐）
+```bash
+# 复制配置模板
+cp config.example.yaml config.yaml
 
+# 编辑 config.yaml 配置文件
+# 支持环境变量替换，格式：${VAR_NAME:default_value}
+```
+
+#### 环境变量（可选）
 ```bash
 # 复制环境变量模板
 cp .env.example .env
 
-# 编辑 .env 文件
-# RAGFlow API 配置
-RAGFLOW_API_URL=http://150.109.16.195:7080
-RAGFLOW_API_KEY=ragflow-g4ZWE3OTNhNDUxYTExZjA4MTljMDI0Mm
+# 编辑 .env 文件设置必要的环境变量
+# RAGFlow配置
+RAGFLOW_API_KEY=your_ragflow_api_key
+DEFAULT_DATASET_ID=your_dataset_id
 
-# S3框架模型配置
-S3_SEARCH_MODEL_NAME=xDAN-R2-Qwen3-14b-RagRL-step450-0618
-S3_SEARCH_MODEL_URL=http://209.20.158.45:8001/v1
-S3_SEARCH_MODEL_API_KEY=sk-empty
-
-S3_GENERATOR_API_BASE=http://43.134.187.48:7220/v1
-S3_GENERATOR_MODEL_NAME=deepseek-chat
-S3_GENERATOR_API_KEY=sk-vvr2jecYl1lkEu2MF4E3Ef0dC92c4a3eA6F2B633Ba621d81
-
-# 默认数据集ID
-DEFAULT_DATASET_ID=7e8d9e924cde11f0afc90242ac140006
+# LLM API密钥
+DEEPSEEK_API_KEY=your_deepseek_api_key
 ```
 
 ### 3. 安装依赖
 
-#### 后端依赖
+#### 使用uv（推荐，更快）
+```bash
+# 安装uv
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# 创建虚拟环境并安装依赖
+uv venv
+source .venv/bin/activate  # Linux/macOS
+uv pip install -r requirements.txt
+```
+
+#### 使用pip（传统方式）
 ```bash
 # 创建Python虚拟环境
 python3 -m venv venv
@@ -74,102 +85,70 @@ cd ..
 
 ### 4. 启动服务
 
-#### 方式1：使用启动脚本（推荐）
+#### 启动API服务
 ```bash
-# 启动所有服务（交互式选择）
-./start_server.sh start
+# 方式1：使用uv运行（推荐）
+uv run python -m src.api.server
 
-# 查看服务状态
-./start_server.sh status
+# 方式2：直接运行
+python -m src.api.server
 
-# 停止所有服务
-./start_server.sh stop
-# 或
-./stop_server.sh
-
-# 重启服务
-./start_server.sh restart
+# 方式3：使用uvicorn（支持热重载）
+uvicorn src.api.server:app --host 0.0.0.0 --port 8050 --reload
 ```
 
-#### 方式2：单独管理服务
+#### 启动前端（可选）
 ```bash
-# 仅启动API代理服务（核心服务）
-./start_server.sh api-proxy start
-
-# 仅启动搜索演示服务
-./start_server.sh demo start
-
-# 仅启动前端开发服务
-./start_server.sh frontend start
-```
-
-#### 方式3：手动启动
-```bash
-# 启动API代理服务
-source venv/bin/activate
-python api_proxy.py
-
-# 启动搜索演示服务
-python demo_server_simple.py
-
-# 启动前端服务
 cd frontend
 npm run dev
 ```
 
 ### 5. 访问应用
 
-- **前端应用**: http://localhost:5173
-- **完整API服务**: http://localhost:8050 (Swagger文档: http://localhost:8050/docs)
-- **搜索可视化**: http://localhost:8051
-- **API文档**: 查看 `docs/API接口对接文档.md`
+- **API服务**: http://localhost:8050
+- **Swagger文档**: http://localhost:8050/docs
+- **前端应用**: http://localhost:5173 (如果启动了前端)
+- **健康检查**: http://localhost:8050/health
 
 ## 🏗️ 架构说明
 
 ### 系统架构
 ```
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   Frontend      │    │   API Proxy      │    │   RAGFlow       │
-│   (React 19)    │◄──►│   (FastAPI)      │◄──►│   Server        │
-│   Port: 5173    │    │   Port: 8050     │    │   Port: 7080    │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
-                              ▲
-                              │
-                       ┌──────────────────┐
-                       │   Demo Server    │
-                       │   (Visualization)│
-                       │   Port: 8051     │
-                       └──────────────────┘
+┌─────────────────┐
+│   Frontend      │
+│  (React + TS)   │
+│   Port: 5173    │
+└────────┬────────┘
+         │
+    ┌────▼─────┐
+    │   API    │     ┌──────────────┐     ┌──────────────┐
+    │  Server  ├────►│ S3 Framework ├────►│   LiteLLM    │
+    │Port: 8050│     │  (编排引擎)  │     │ (统一LLM路由) │
+    └─────┬────┘     └──────┬───────┘     └──────────────┘
+          │                 │
+          └─────────────────┼──────────────┐
+                           │              │
+                    ┌──────▼───────┐      │
+                    │   RAGFlow    │      │
+                    │ (知识库检索)  │◄─────┘
+                    │ Port: 7080   │
+                    └──────────────┘
 ```
 
 ### 核心功能模块
 
-#### ✅ 已验证功能
-1. **知识库管理** (100% 测试通过)
-   - 创建、查询、更新、删除知识库
-   - 知识库列表和详情获取
-   - 支持自定义embedding模型
+#### ✅ S3智能问答框架
+- **Search阶段**：从RAGFlow知识库检索相关文档
+- **Select阶段**：使用xDAN-R2模型智能筛选重要文档
+- **Synthesize阶段**：使用DeepSeek生成精准答案
+- **多轮迭代**：支持最多3轮搜索优化
 
-2. **文档管理** (100% 测试通过)
-   - 文档上传和自动解析
-   - 文档列表和状态查询
-   - 文档内容获取和下载
-   - 批量删除操作
-
-3. **对话系统** (100% 测试通过)
-   - 基于知识库的智能问答
-   - SSE流式对话响应
-   - 多轮对话支持
-
-4. **检索功能** (100% 测试通过)
-   - 语义相似度检索
-   - 多知识库跨库检索
-   - 结果相关度排序
-
-5. **实时通信** (100% 测试通过)
-   - Server-Sent Events (SSE)
-   - 流式响应处理
-   - 实时状态更新
+#### ✅ 统一API接口
+1. **聊天管理**：创建、列表、删除聊天会话
+2. **聊天交互**：发送消息、获取历史（支持SSE流式）
+3. **知识库管理**：CRUD操作（代理到RAGFlow）
+4. **文档管理**：上传、列表、删除文档
+5. **知识检索**：多知识库语义检索
 
 ## 📋 API接口
 
@@ -198,26 +177,22 @@ npm run dev
 
 ### 运行测试
 ```bash
-# 激活虚拟环境
-source venv/bin/activate
+# 运行S3框架测试
+uv run pytest tests/test_s3_framework.py -v
 
-# 安装测试依赖
-pip install pytest pytest-asyncio aiohttp
+# 运行架构测试
+uv run pytest tests/test_refactored_architecture.py -v
 
-# 运行完整的API测试
-python tests/test_final_complete_workflow.py
-
-# 运行特定测试
-python tests/test_implemented_apis.py
-python tests/test_with_existing_kb.py
+# 运行所有测试
+uv run pytest tests/ -v
 ```
 
 ### 测试覆盖
-- ✅ **知识库管理**: 创建、列表、更新、删除
-- ✅ **文档管理**: 上传、列表、批量删除
-- ✅ **对话功能**: 创建对话、SSE流式问答
-- ✅ **检索功能**: 语义检索、相似度匹配
-- ✅ **错误处理**: 各种错误场景验证
+- ✅ **S3框架**: Search、Select、Synthesize各阶段
+- ✅ **服务层**: 服务创建、健康检查、搜索功能
+- ✅ **客户端**: LiteLLM集成、RAGFlow连接
+- ✅ **配置系统**: 配置加载、环境变量替换
+- ✅ **API接口**: 所有RESTful接口
 
 ## 🛠️ 开发指南
 
@@ -250,23 +225,25 @@ npm run test       # 运行测试
 ## 📊 项目状态
 
 ### 当前版本
-- **API版本**: v1.0
-- **前端版本**: v1.0
+- **API版本**: v2.0 (重构后)
+- **架构版本**: S3框架集成
 - **测试覆盖**: 100%
-- **最后更新**: 2025-06-23
+- **最后更新**: 2025-06-26
 
 ### 关键特性
-- ✅ 完整的RAGFlow API集成
-- ✅ 实时SSE通信
-- ✅ 现代化React前端
-- ✅ 完整的测试覆盖
-- ✅ 详细的API文档
-- ✅ 生产就绪的代码质量
+- ✅ S3智能问答框架
+- ✅ 统一的LLM路由管理
+- ✅ 完整的RAGFlow集成
+- ✅ 清晰的分层架构
+- ✅ 生产级部署支持
+- ✅ 完善的配置系统
 
 ## 📚 文档
 
-- **[API接口对接文档](docs/API接口对接文档.md)** - 主要接口文档
-- **[README](docs/README.md)** - 文档导航
+- **[部署指南](DEPLOYMENT_GUIDE_V2.md)** - 完整的部署说明
+- **[API状态](CURRENT_API_STATUS.md)** - 当前API服务状态
+- **[架构文档](docs/架构文档/S3-ARCHITECTURE.md)** - S3架构设计
+- **[迁移指南](docs/migration/MIGRATION_GUIDE.md)** - 代码迁移指南
 
 ## 🤝 贡献
 

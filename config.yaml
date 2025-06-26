@@ -1,0 +1,217 @@
+# Agentic-RAG-Service 配置文件
+# 使用YAML格式进行配置管理
+
+# ==================== RAGFlow 配置 ====================
+ragflow:
+  api_url: http://150.109.16.195:7080
+  api_key: ragflow-g4ZWE3OTNhNDUxYTExZjA4MTljMDI0Mm
+  default_dataset_id: 7e8d9e924cde11f0afc90242ac140006
+
+# ==================== LLM 提供商配置 ====================
+llm_providers:
+  # xDAN-R2-Qwen3模型（S3框架专用搜索模型）
+  xdan_search:
+    api_key: sk-empty
+    base_url: http://209.20.158.204:8001/v1
+    model_name: xDAN-R2-Qwen3-14b-RagRL-step450-0618
+    # 专门训练的S3框架智能体模型
+    
+  # DeepSeek配置（成本较低，用于生成）
+  deepseek:
+    api_key: sk-vvr2jecYl1lkEu2MF4E3Ef0dC92c4a3eA6F2B633Ba621d81
+    base_url: https://api.deepseek.com/v1
+    
+  # OpenAI兼容接口（使用DeepSeek服务）
+  openai:
+    api_key: sk-vvr2jecYl1lkEu2MF4E3Ef0dC92c4a3eA6F2B633Ba621d81
+    base_url: http://43.134.187.48:7220/v1
+    # 实际使用deepseek-chat模型，但通过OpenAI兼容接口
+    
+  # Anthropic配置（可选）
+  anthropic:
+    api_key: ${ANTHROPIC_API_KEY}  # 从环境变量读取
+    
+  # Gemini配置（可选）
+  gemini:
+    api_key: ${GEMINI_API_KEY}  # 从环境变量读取
+
+# ==================== 模型配置 ====================
+models:
+  # 默认模型 - 使用OpenAI兼容接口
+  default_model: gpt-3.5-turbo
+  
+  # S3框架专用模型
+  s3_framework:
+    # 智能体推理模型（Select阶段）
+    # 使用专门训练的xDAN-R2-Qwen3模型
+    agent_model: xDAN-R2-Qwen3-14b-RagRL-step450-0618
+    agent_provider: xdan_search  # 指定使用xdan_search提供商
+    agent_temperature: 0.1
+    agent_max_tokens: 4000
+    
+    # 答案生成模型（Synthesize阶段）
+    # 使用DeepSeek进行成本优化的生成
+    generation_model: deepseek-chat
+    generation_provider: openai  # 使用OpenAI兼容接口
+    generation_temperature: 0.7
+    generation_max_tokens: 8192
+  
+  # 备用模型列表（按优先级排序）
+  fallback_models:
+    - deepseek-chat
+    - gpt-4o-mini
+    - claude-3-7-sonnet
+
+# ==================== S3框架配置 ====================
+s3_framework:
+  # 搜索配置
+  max_search_rounds: 5
+  default_top_k: 10
+  similarity_threshold: 0.1
+  
+  # 搜索策略
+  search_strategy:
+    enable_multi_round: true
+    min_confidence_threshold: 0.7
+    max_query_length: 200
+
+# ==================== LiteLLM路由配置 ====================
+litellm:
+  # 路由配置
+  routing:
+    enabled: true
+    strategy: cost-based  # cost-based, latency-based, usage-based
+    retry_count: 3
+    
+  # 模型优先级和成本配置
+  model_costs:
+    deepseek-chat: 0.0001  # 每1k tokens
+    gpt-4o-mini: 0.001
+    gpt-4o: 0.005
+    claude-3-7-sonnet: 0.003
+
+# ==================== 数据库配置 ====================
+database:
+  # 数据库类型 - 仅支持PostgreSQL以确保高并发性能
+  type: postgresql
+  
+  # PostgreSQL配置
+  postgresql:
+    host: ${DB_HOST:localhost}
+    port: ${DB_PORT:5432}
+    database: ${DB_NAME:xdan_rag_service}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:postgres}
+    
+    # 连接池配置 - 优化高并发性能
+    pool:
+      min_connections: 10
+      max_connections: 50
+      connection_timeout: 30
+      idle_timeout: 600
+      max_queries: 50000
+      max_inactive_connection_lifetime: 300
+      
+    # SSL配置
+    ssl:
+      enabled: false
+      mode: prefer  # disable, allow, prefer, require
+
+# ==================== 服务配置 ====================
+service:
+  # 服务端口
+  api_proxy_port: 8050
+  rag_service_port: 8001
+  
+  # API配置
+  api:
+    cors_enabled: true
+    cors_origins: ["*"]
+    request_timeout: 300  # 秒
+    
+  # 健康检查
+  health_check:
+    enabled: true
+    interval: 60  # 秒
+
+# ==================== 日志配置 ====================
+logging:
+  level: INFO  # DEBUG, INFO, WARNING, ERROR
+  verbose: false
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  
+  # 日志文件配置
+  file:
+    enabled: true
+    path: logs/ragflow-api.log
+    max_size: 100MB
+    backup_count: 5
+
+# ==================== 性能优化配置 ====================
+performance:
+  # 缓存配置
+  cache:
+    enabled: true
+    ttl: 3600  # 秒
+    max_size: 1000
+    
+  # 并发配置
+  concurrency:
+    max_workers: 10
+    queue_size: 100
+    
+  # 批处理配置
+  batch:
+    enabled: true
+    batch_size: 5
+    timeout: 10  # 秒
+
+# ==================== 可观察性配置 ====================
+observability:
+  # Langfuse配置 - LLM可观察性平台
+  langfuse:
+    enabled: true
+    host: ${LANGFUSE_HOST:https://agentops.xdan.ai}
+    public_key: ${LANGFUSE_PUBLIC_KEY:pk-lf-aab86f14-addb-4f26-a755-9ba672359e85}
+    secret_key: ${LANGFUSE_SECRET_KEY:sk-lf-dbfde2d7-c80a-456a-8078-279958763214}
+    
+    # 追踪配置
+    tracing:
+      sample_rate: 1.0  # 100%采样率用于完整可观察性
+      session_tracking: true
+      user_tracking: true
+      
+    # 批处理配置
+    batch:
+      enabled: true
+      size: 10
+      timeout: 10  # 秒
+      
+    # 标签和元数据
+    default_tags:
+      - "s3-framework"
+      - "agentic-rag"
+      - "production"
+    
+    environment: ${ENVIRONMENT:production}
+    
+  # 传统监控配置
+  metrics:
+    enabled: true
+    export_interval: 60  # 秒
+    prometheus:
+      enabled: false
+      port: 9090
+    
+  # OpenTelemetry追踪
+  tracing:
+    enabled: true
+    sample_rate: 0.1
+    exporters:
+      - langfuse
+      - jaeger  # 可选
+    
+  # 告警配置
+  alerts:
+    enabled: false
+    webhook_url: ${ALERT_WEBHOOK_URL}

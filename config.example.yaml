@@ -1,0 +1,134 @@
+# Agentic-RAG-Service 示例配置文件
+# 复制此文件为 config.yaml 并根据需要修改
+
+# ==================== RAGFlow 配置 ====================
+ragflow:
+  api_url: http://150.109.16.195:7080
+  api_key: your-ragflow-api-key-here
+  default_dataset_id: 7e8d9e924cde11f0afc90242ac140006
+
+# ==================== LLM 提供商配置 ====================
+llm_providers:
+  # xDAN-R2-Qwen3模型（S3框架专用搜索模型）
+  xdan_search:
+    api_key: sk-empty
+    base_url: http://209.20.158.45:8001/v1
+    model_name: xDAN-R2-Qwen3-14b-RagRL-step450-0618
+    
+  # OpenAI配置（或OpenAI兼容接口）
+  openai:
+    api_key: ${OPENAI_API_KEY}  # 从环境变量读取
+    # base_url: http://43.134.187.48:7220/v1  # 可选：使用兼容接口
+    
+  # DeepSeek配置（成本较低，推荐）
+  deepseek:
+    api_key: your-deepseek-api-key
+    base_url: https://api.deepseek.com/v1
+    
+  # Anthropic配置
+  anthropic:
+    api_key: ${ANTHROPIC_API_KEY}
+    
+  # 本地vLLM服务配置
+  vllm:
+    api_key: sk-empty
+    base_url: http://localhost:8000/v1
+
+# ==================== 模型配置 ====================
+models:
+  # 默认使用的模型
+  default_model: gpt-4o-mini
+  
+  # S3框架专用模型配置
+  s3_framework:
+    # 智能体推理模型（用于判断是否需要更多信息）
+    # 推荐使用专门训练的xDAN-R2-Qwen3模型
+    agent_model: xDAN-R2-Qwen3-14b-RagRL-step450-0618
+    agent_provider: xdan_search  # 指定使用xdan_search提供商
+    agent_temperature: 0.1  # 低温度确保决策一致性
+    agent_max_tokens: 1000
+    
+    # 答案生成模型（用于生成最终答案）
+    generation_model: gpt-4o-mini
+    generation_provider: openai  # 可选指定提供商
+    generation_temperature: 0.7
+    generation_max_tokens: 2000
+  
+  # 备用模型列表（按优先级排序）
+  fallback_models:
+    - gpt-4o-mini
+    - gpt-3.5-turbo
+    - deepseek-chat
+    - claude-3-haiku
+
+# ==================== S3框架配置 ====================
+s3_framework:
+  # 搜索配置
+  max_search_rounds: 3      # 最多进行3轮搜索
+  default_top_k: 10         # 每次检索10个文档
+  similarity_threshold: 0.1 # 相似度阈值
+  
+  # 搜索策略
+  search_strategy:
+    enable_multi_round: true      # 启用多轮搜索
+    min_confidence_threshold: 0.7 # 最小信心阈值
+    max_query_length: 200         # 最大查询长度
+
+# ==================== LiteLLM路由配置 ====================
+litellm:
+  # 路由配置
+  routing:
+    enabled: true              # 启用智能路由
+    strategy: cost-based       # 基于成本的路由策略
+    retry_count: 3             # 失败重试次数
+    
+  # 模型成本配置（每1k tokens的成本）
+  model_costs:
+    deepseek-chat: 0.00014     # DeepSeek极低成本
+    gpt-3.5-turbo: 0.0005      # GPT-3.5较低成本
+    gpt-4o-mini: 0.00015       # GPT-4o-mini低成本
+    gpt-4o: 0.005              # GPT-4o高质量
+    claude-3-haiku: 0.00025    # Claude快速模型
+    claude-3-5-sonnet: 0.003   # Claude高质量模型
+
+# ==================== 服务配置 ====================
+service:
+  # 服务端口
+  rag_service_port: 8001
+  
+  # API配置
+  api:
+    cors_enabled: true
+    cors_origins: ["*"]
+    request_timeout: 300  # 秒
+    
+  # 健康检查
+  health_check:
+    enabled: true
+    interval: 60  # 秒
+
+# ==================== 日志配置 ====================
+logging:
+  level: INFO  # DEBUG, INFO, WARNING, ERROR
+  verbose: false
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  
+  # 日志文件配置
+  file:
+    enabled: false
+    path: logs/ragflow-api.log
+    max_size: 100MB
+    backup_count: 5
+
+# ==================== 性能优化配置 ====================
+performance:
+  # 缓存配置
+  cache:
+    enabled: true
+    ttl: 3600  # 秒
+    max_size: 1000
+    
+  # 并发配置
+  concurrency:
+    max_workers: 10
+    queue_size: 100

@@ -2,15 +2,20 @@
 """
 pytest配置文件
 提供测试fixtures和通用配置
+适配重构后的新架构
 """
 
 import pytest
 import sys
 import os
-from unittest.mock import Mock, MagicMock
+import asyncio
+from unittest.mock import Mock, MagicMock, AsyncMock
 
 # 添加项目根目录到Python路径
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+# 配置pytest-asyncio
+pytest_plugins = ('pytest_asyncio',)
 
 
 # ==================== Mock数据 ====================
@@ -133,44 +138,28 @@ def mock_sessions():
 # ==================== Mock服务 ====================
 
 @pytest.fixture
-def mock_ragflow_sdk():
-    """提供mock的RAGFlowSDKWrapper实例"""
-    mock_sdk = Mock()
+def mock_litellm_client():
+    """提供mock的LiteLLMSDKClientV2实例"""
+    mock_client = AsyncMock()
     
-    # 设置默认返回值
-    mock_sdk.list_datasets.return_value = {
-        'code': 0,
-        'data': []
+    # 默认聊天完成响应
+    mock_client.chat_completion.return_value = {
+        "choices": [{
+            "message": {
+                "content": "Mock LLM response"
+            }
+        }]
     }
     
-    mock_sdk.retrieve_chunks.return_value = {
-        'code': 0,
-        'data': {
-            'chunks': [],
-            'total': 0
-        }
-    }
+    # 流式响应
+    async def mock_stream():
+        yield {"choices": [{"delta": {"content": "Part 1"}}]}
+        yield {"choices": [{"delta": {"content": "Part 2"}}]}
+        yield {"choices": [{"delta": {"content": "Part 3"}}]}
     
-    mock_sdk.list_agents.return_value = []
+    mock_client.chat_completion_stream = mock_stream
     
-    mock_sdk.create_session.return_value = {
-        'code': 0,
-        'data': {
-            'session_id': 'new_session',
-            'agent_id': 'agent1',
-            'created_at': '2024-01-20T12:00:00Z'
-        }
-    }
-    
-    mock_sdk.session_ask.return_value = {
-        'code': 0,
-        'data': {
-            'content': 'Mock response',
-            'session_id': 'session1'
-        }
-    }
-    
-    return mock_sdk
+    return mock_client
 
 
 @pytest.fixture
@@ -326,3 +315,53 @@ def pytest_collection_modifyitems(config, items):
             item.add_marker(pytest.mark.integration)
         elif "unit" in str(item.fspath):
             item.add_marker(pytest.mark.unit)
+
+# ==================== 新架构相关Fixtures ====================
+
+@pytest.fixture
+def mock_s3_framework():
+    """提供mock的S3Framework实例"""
+    from src.core.s3_framework import S3FrameworkAgent
+    mock_framework = Mock(spec=S3FrameworkAgent)
+    
+    # Mock执行工作流
+    async def mock_workflow(*args, **kwargs):
+        yield {
+            "workflow_info": {
+                "search_rounds": 1,
+                "selected_documents": [],
+                "search_process": []
+            },
+            "final_answer": "Mock answer from S3 framework"
+        }
+    
+    mock_framework.execute_s3_workflow = mock_workflow
+    return mock_framework
+
+@pytest.fixture
+def mock_s3_service():
+    """提供mock的S3Service实例"""
+    from src.services.s3_service import S3Service
+    mock_service = Mock(spec=S3Service)
+    
+    # Mock ask方法
+    async def mock_ask(*args, **kwargs):
+        yield {"final_answer": "Mock answer from S3 service"}
+    
+    mock_service.ask = mock_ask
+    mock_service.health_check = AsyncMock(return_value={
+        "ragflow": True,
+        "litellm": True,
+        "s3_framework": True
+    })
+    
+    return mock_service
+
+@pytest.fixture
+def test_s3_config():
+    """测试用S3配置"""
+    return {
+        'ragflow_api_url': 'http://test.ragflow.api',
+        'ragflow_api_key': 'test_key',
+        'default_dataset_id': 'test_dataset'
+    }
