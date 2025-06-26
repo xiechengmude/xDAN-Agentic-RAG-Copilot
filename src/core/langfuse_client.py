@@ -49,7 +49,8 @@ class LangfuseObservabilityClient:
                 public_key=langfuse_config.get('public_key'),
                 secret_key=langfuse_config.get('secret_key'),
                 host=langfuse_config.get('host', 'https://cloud.langfuse.com'),
-                debug=False
+                debug=False,
+                timeout=60  # 设置60秒超时
             )
             
             # 测试连接
