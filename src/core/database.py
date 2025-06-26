@@ -110,10 +110,14 @@ class PostgreSQLAdapter(DatabaseAdapter):
         
         # 构建连接字符串
         host = pg_config.get('host', 'localhost')
-        port = pg_config.get('port', 5432)
+        port = pg_config.get('port', 5433)  # 修改默认端口为5433
         database = pg_config.get('database', 'xdan_rag_service')
-        username = pg_config.get('username', 'postgres')
-        password = pg_config.get('password', 'postgres')
+        username = pg_config.get('username', 'ragflow_user')  # 修改默认用户名
+        password = pg_config.get('password', 'ragflow123')  # 修改默认密码
+        
+        # 添加调试日志
+        logger.info(f"数据库连接配置: host={host}, port={port}, database={database}, username={username}")
+        logger.info(f"完整配置: {pg_config}")
         
         try:
             self.pool = await asyncpg.create_pool(
@@ -348,7 +352,8 @@ class DatabaseManager:
     
     def __init__(self):
         self.adapter: Optional[PostgreSQLAdapter] = None
-        self.config_loader = ConfigLoader()
+        from src.core.config_loader import get_config
+        self.config_loader = get_config()
     
     async def initialize(self):
         """初始化PostgreSQL数据库适配器"""

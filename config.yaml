@@ -98,10 +98,10 @@ database:
   # PostgreSQL配置
   postgresql:
     host: ${DB_HOST:localhost}
-    port: ${DB_PORT:5432}
+    port: ${DB_PORT:5433}
     database: ${DB_NAME:xdan_rag_service}
-    username: ${DB_USER:postgres}
-    password: ${DB_PASSWORD:postgres}
+    username: ${DB_USER:ragflow_user}
+    password: ${DB_PASSWORD:ragflow123}
     
     # 连接池配置 - 优化高并发性能
     pool:
