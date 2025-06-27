@@ -131,6 +131,11 @@ class ChatMessageRequest(BaseModel):
     content: str = Field(..., description="消息内容")
     stream: bool = Field(default=False, description="是否流式返回")
 
+class ChatUpdateRequest(BaseModel):
+    name: Optional[str] = Field(None, description="对话名称")
+    description: Optional[str] = Field(None, description="对话描述")
+    llm_config: Optional[Dict[str, Any]] = Field(None, description="LLM配置")
+
 class RetrievalRequest(BaseModel):
     question: str = Field(..., description="检索问题")
     dataset_ids: List[str] = Field(..., description="要检索的数据集ID列表")
@@ -413,6 +418,77 @@ async def list_chats(
     except Exception as e:
         logger.error(f"Failed to list chats: {e}")
         raise HTTPException(status_code=500, detail="Failed to list chats")
+
+@app.get("/api/v1/chats/{chat_id}", response_model=ApiResponse)
+async def get_chat(
+    chat_id: str,
+    db: DatabaseAdapter = Depends(get_database),
+    api_key: str = Depends(verify_api_key)
+):
+    """获取单个对话详情"""
+    try:
+        chat_info = await get_chat_info(chat_id, db)
+        if not chat_info:
+            raise HTTPException(status_code=404, detail="Chat not found")
+        
+        return success_response(data={
+            "id": chat_info["id"],
+            "name": chat_info["name"],
+            "description": chat_info["description"],
+            "dataset_ids": chat_info["dataset_ids"],
+            "llm": chat_info["llm_config"],
+            "create_date": chat_info["created_at"],
+            "update_date": chat_info["updated_at"]
+        })
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get chat: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get chat")
+
+@app.put("/api/v1/chats/{chat_id}", response_model=ApiResponse)
+async def update_chat(
+    chat_id: str,
+    request: ChatUpdateRequest,
+    db: DatabaseAdapter = Depends(get_database),
+    api_key: str = Depends(verify_api_key)
+):
+    """更新对话信息"""
+    try:
+        # 检查对话是否存在
+        chat_info = await get_chat_info(chat_id, db)
+        if not chat_info:
+            raise HTTPException(status_code=404, detail="Chat not found")
+        
+        # 准备更新数据
+        update_data = {}
+        if request.name is not None:
+            update_data["name"] = request.name
+        if request.description is not None:
+            update_data["description"] = request.description
+        if request.llm_config is not None:
+            update_data["llm_config"] = request.llm_config
+            
+        # 执行更新
+        success = await db.update_chat(chat_id, update_data)
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to update chat")
+        
+        # 返回更新后的对话信息
+        updated_chat = await get_chat_info(chat_id, db)
+        return success_response(data={
+            "id": updated_chat["id"],
+            "name": updated_chat["name"],
+            "description": updated_chat["description"],
+            "dataset_ids": updated_chat["dataset_ids"],
+            "llm": updated_chat["llm_config"],
+            "update_date": updated_chat["updated_at"]
+        })
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to update chat: {e}")
+        raise HTTPException(status_code=500, detail="Failed to update chat")
 
 @app.post("/api/v1/chats/{chat_id}/completions", response_model=ApiResponse)
 async def chat_completion(
