@@ -220,18 +220,33 @@ class RAGFlowClient:
             # RAGFlow使用批量删除接口，即使是单个删除
             data = {"ids": dataset_ids}
             response = self.session.delete(url, json=data, timeout=self.timeout)
-            response.raise_for_status()
-            result = response.json()
             
-            # 补充完整的响应格式
-            if result.get("code") == 0:
-                return {
-                    "code": 0,
-                    "message": "Dataset(s) deleted successfully",
-                    "data": None
-                }
-            else:
-                return result
+            # 先尝试解析响应，即使状态码不是2xx
+            try:
+                result = response.json()
+                # 如果响应包含RAGFlow的错误码，直接返回
+                if "code" in result:
+                    if result.get("code") == 0:
+                        return {
+                            "code": 0,
+                            "message": "Dataset(s) deleted successfully",
+                            "data": None
+                        }
+                    else:
+                        return result
+            except ValueError:
+                # 如果响应不是JSON格式，继续处理
+                pass
+                
+            # 如果没有获取到有效的错误码，才检查HTTP状态
+            response.raise_for_status()
+            
+            # 如果到这里，说明响应成功但没有错误码
+            return {
+                "code": 0,
+                "message": "Dataset(s) deleted successfully",
+                "data": None
+            }
         except requests.exceptions.RequestException as e:
             logger.error(f"删除知识库失败: {e}")
             return {"code": 500, "message": str(e), "data": None}
@@ -282,18 +297,33 @@ class RAGFlowClient:
         try:
             data = {"ids": document_ids}
             response = self.session.delete(url, json=data, timeout=self.timeout)
-            response.raise_for_status()
-            result = response.json()
             
-            # 补充完整的响应格式
-            if result.get("code") == 0:
-                return {
-                    "code": 0,
-                    "message": "Document(s) deleted successfully",
-                    "data": None
-                }
-            else:
-                return result
+            # 先尝试解析响应，即使状态码不是2xx
+            try:
+                result = response.json()
+                # 如果响应包含RAGFlow的错误码，直接返回
+                if "code" in result:
+                    if result.get("code") == 0:
+                        return {
+                            "code": 0,
+                            "message": "Document(s) deleted successfully",
+                            "data": None
+                        }
+                    else:
+                        return result
+            except ValueError:
+                # 如果响应不是JSON格式，继续处理
+                pass
+                
+            # 如果没有获取到有效的错误码，才检查HTTP状态
+            response.raise_for_status()
+            
+            # 如果到这里，说明响应成功但没有错误码
+            return {
+                "code": 0,
+                "message": "Document(s) deleted successfully",
+                "data": None
+            }
         except requests.exceptions.RequestException as e:
             logger.error(f"删除文档失败: {e}")
             return {"code": 500, "message": str(e), "data": None}

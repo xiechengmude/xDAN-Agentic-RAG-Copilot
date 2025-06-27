@@ -228,6 +228,22 @@ Authorization: Bearer xDAN-RAG-Service-Demo-Key
 }
 ```
 
+### 错误码映射
+服务端会根据 RAGFlow 返回的错误码自动映射到合适的 HTTP 状态码：
+
+| RAGFlow错误码 | HTTP状态码 | 说明 |
+|--------------|------------|------|
+| 0 | 200 | 成功 |
+| 100 | 403 | 权限错误 |
+| 101 | 404 | 资源不存在（无效的UUID） |
+| 102 | 404 | 文档未找到 |
+| 103-106 | 400 | 参数错误（缺失、无效等） |
+| 107 | 409 | 资源冲突（如重复创建） |
+| 108 | 422 | 无法处理的实体 |
+| 109 | 429 | 请求过多 |
+| 200-203 | 500-504 | 服务器错误 |
+| 300-305 | 400 | 业务逻辑错误 |
+
 ---
 
 ## 系统管理接口
@@ -373,11 +389,46 @@ DELETE /api/v1/datasets/{dataset_id}
 
 **注意**: 内部实现使用批量删除接口，即使是删除单个数据集。
 
-**响应示例**:
+**成功响应示例**:
 ```json
 {
   "code": 0,
-  "message": "删除成功"
+  "message": "Dataset deleted successfully",
+  "data": null
+}
+```
+
+**错误响应示例**:
+```json
+// 数据集不存在 (HTTP 404)
+{
+  "detail": "Invalid dataset ID or dataset not found"
+}
+
+// 权限错误 (HTTP 403)
+{
+  "detail": "Permission denied"
+}
+```
+
+### 5. 批量删除知识库
+```http
+DELETE /api/v1/datasets
+```
+
+**请求体**:
+```json
+{
+  "ids": ["dataset_id1", "dataset_id2"]
+}
+```
+
+**成功响应示例**:
+```json
+{
+  "code": 0,
+  "message": "Datasets deleted successfully",
+  "data": null
 }
 ```
 
@@ -457,6 +508,28 @@ DELETE /api/v1/datasets/{dataset_id}/documents/{doc_id}
 
 **注意**: 内部实现统一使用批量删除接口。
 
+**成功响应示例**:
+```json
+{
+  "code": 0,
+  "message": "Document deleted successfully",
+  "data": null
+}
+```
+
+**错误响应示例**:
+```json
+// 文档不存在 (HTTP 404)
+{
+  "detail": "Document not found"
+}
+
+// 数据集不存在 (HTTP 404)
+{
+  "detail": "Dataset not found"
+}
+```
+
 ### 5. 批量删除文档
 ```http
 DELETE /api/v1/datasets/{dataset_id}/documents
@@ -470,6 +543,28 @@ DELETE /api/v1/datasets/{dataset_id}/documents
 ```
 
 **注意**: 所有文档删除操作都使用此批量接口，即使删除单个文档也需要传递数组格式。
+
+**成功响应示例**:
+```json
+{
+  "code": 0,
+  "message": "Documents deleted successfully",
+  "data": null
+}
+```
+
+**错误响应示例**:
+```json
+// 缺少ids字段 (HTTP 400)
+{
+  "detail": "Missing 'ids' field"
+}
+
+// 部分文档不存在 (HTTP 404)
+{
+  "detail": "One or more documents not found"
+}
+```
 
 ### 6. 下载文档
 ```http
@@ -495,8 +590,6 @@ POST /api/v1/datasets/{dataset_id}/documents/parse
 ---
 
 ## 对话管理
-
-**注意**: `GET /api/v1/chats/{chat_id}` 和 `PUT /api/v1/chats/{chat_id}` 这两个接口未实现。
 
 ### 1. 创建对话
 ```http
@@ -532,7 +625,71 @@ POST /api/v1/chats
 }
 ```
 
-### 2. 发送消息（SSE流式响应）
+### 2. 获取对话详情
+```http
+GET /api/v1/chats/{chat_id}
+```
+
+**响应示例**:
+```json
+{
+  "code": 0,
+  "message": "Success",
+  "data": {
+    "id": "2d0215664feb11f09be10242ac140006",
+    "name": "测试对话",
+    "description": "用于测试的对话",
+    "dataset_ids": ["7e8d9e924cde11f0afc90242ac140006"],
+    "llm": {
+      "model_name": "deepseek-ai/DeepSeek-V3@SILICONFLOW",
+      "temperature": 0.1,
+      "max_tokens": 512
+    },
+    "create_date": "2025-06-27T04:38:25.221907+00:00",
+    "update_date": "2025-06-27T04:38:25.252100+00:00"
+  }
+}
+```
+
+### 3. 更新对话信息
+```http
+PUT /api/v1/chats/{chat_id}
+```
+
+**请求体**:
+```json
+{
+  "name": "更新后的对话名称",
+  "description": "更新后的描述",
+  "llm_config": {
+    "temperature": 0.8,
+    "max_tokens": 1000
+  }
+}
+```
+
+**注意**: 所有字段都是可选的，只需传递需要更新的字段。
+
+**响应示例**:
+```json
+{
+  "code": 0,
+  "message": "Success",
+  "data": {
+    "id": "2d0215664feb11f09be10242ac140006",
+    "name": "更新后的对话名称",
+    "description": "更新后的描述",
+    "dataset_ids": ["7e8d9e924cde11f0afc90242ac140006"],
+    "llm": {
+      "temperature": 0.8,
+      "max_tokens": 1000
+    },
+    "update_date": "2025-06-27T04:38:25.252100+00:00"
+  }
+}
+```
+
+### 4. 发送消息（SSE流式响应）
 ```http
 POST /api/v1/chats/{chat_id}/completions
 Content-Type: application/json
@@ -552,12 +709,12 @@ data:{"code": 0, "message": "", "data": {"answer": "Hi! I'm your assistant, what
 data:{"code": 0, "message": "", "data": true}
 ```
 
-### 3. 获取对话历史
+### 5. 获取对话历史
 ```http
 GET /api/v1/chats/{chat_id}/messages?page=1&page_size=20
 ```
 
-### 4. 删除对话
+### 6. 删除对话
 ```http
 DELETE /api/v1/chats/{chat_id}
 ```
@@ -966,7 +1123,24 @@ curl -X POST "http://localhost:8050/api/v1/chats" \
   }'
 ```
 
-#### 5. 发送消息
+#### 5. 获取对话详情
+```bash
+curl -X GET "http://localhost:8050/api/v1/chats/{chat_id}" \
+  -H "Authorization: Bearer xDAN-RAG-Service-Demo-Key"
+```
+
+#### 6. 更新对话信息
+```bash
+curl -X PUT "http://localhost:8050/api/v1/chats/{chat_id}" \
+  -H "Authorization: Bearer xDAN-RAG-Service-Demo-Key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "更新后的对话名称",
+    "description": "更新后的描述"
+  }'
+```
+
+#### 7. 发送消息
 ```bash
 curl -X POST "http://localhost:8050/api/v1/chats/{chat_id}/completions" \
   -H "Authorization: Bearer xDAN-RAG-Service-Demo-Key" \
@@ -976,7 +1150,7 @@ curl -X POST "http://localhost:8050/api/v1/chats/{chat_id}/completions" \
   }'
 ```
 
-#### 6. 检索测试
+#### 8. 检索测试
 ```bash
 curl -X POST "http://localhost:8050/api/v1/retrieve" \
   -H "Authorization: Bearer xDAN-RAG-Service-Demo-Key" \
@@ -1066,7 +1240,7 @@ volumes:
 
 ---
 
-**文档版本**: v2.2  
+**文档版本**: v2.3  
 **最后更新**: 2025-06-27  
 **测试状态**: ✅ 已验证所有接口  
 **服务名称**: xDAN Rag Copilot API Service  
@@ -1081,4 +1255,4 @@ volumes:
 - 明确流式响应为真正的逐字增量
 - 添加解析文档接口
 - 修正检索接口路径（/api/v1/retrieve）
-- 标注未实现的对话管理接口
+- 新增对话管理接口（GET和PUT）

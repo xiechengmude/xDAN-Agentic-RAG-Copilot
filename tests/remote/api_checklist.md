@@ -1,7 +1,7 @@
 # 远程服务器API接口检查清单
 
 **远程服务器**: http://150.109.16.195:8050  
-**测试时间**: 2025-06-27 12:21:30  
+**测试时间**: 2025-06-27 12:42:33 12:21:30  
 **API版本**: v2.0  
 
 ## 📋 接口检查清单
@@ -16,15 +16,15 @@
 - [x] `GET /api/v1/datasets?name=xxx` - 搜索知识库（客户端过滤）
 - [x] `POST /api/v1/datasets` - 创建知识库
 - [x] `PUT /api/v1/datasets/{dataset_id}` - 更新知识库
-- [ ] `DELETE /api/v1/datasets/{dataset_id}` - 删除知识库（单个）
+- [x] `DELETE /api/v1/datasets/{dataset_id}` - 删除知识库（单个）
 - [ ] `DELETE /api/v1/datasets` - 批量删除知识库
 
 ### 文档管理 (Document Management)
 - [x] `POST /api/v1/datasets/{dataset_id}/documents` - 上传文档
 - [x] `GET /api/v1/datasets/{dataset_id}/documents` - 获取文档列表
 - [x] `GET /api/v1/datasets/{dataset_id}/documents/{doc_id}` - 获取文档内容
-- [ ] `DELETE /api/v1/datasets/{dataset_id}/documents/{doc_id}` - 删除文档（单个）
-- [ ] `DELETE /api/v1/datasets/{dataset_id}/documents` - 批量删除文档
+- [x] `DELETE /api/v1/datasets/{dataset_id}/documents/{doc_id}` - 删除文档（单个）
+- [x] `DELETE /api/v1/datasets/{dataset_id}/documents` - 批量删除文档
 - [x] `GET /api/v1/datasets/{dataset_id}/documents/{doc_id}/download` - 下载文档
 - [x] `POST /api/v1/datasets/{dataset_id}/documents/parse` - 解析文档
 
@@ -32,7 +32,7 @@
 - [x] `POST /api/v1/chats` - 创建对话
 - [x] `GET /api/v1/chats` - 获取对话列表
 - [x] `GET /api/v1/chats/{chat_id}` - 获取对话详情
-- [ ] `PUT /api/v1/chats/{chat_id}` - 更新对话
+- [x] `PUT /api/v1/chats/{chat_id}` - 更新对话
 - [x] `DELETE /api/v1/chats/{chat_id}` - 删除对话
 - [x] `POST /api/v1/chats/{chat_id}/completions` - 发送消息（SSE流式）
 - [x] `GET /api/v1/chats/{chat_id}/messages` - 获取对话历史

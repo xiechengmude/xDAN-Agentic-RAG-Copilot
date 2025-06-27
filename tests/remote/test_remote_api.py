@@ -247,16 +247,44 @@ def test_chat_apis():
     success, msg = test_endpoint("GET", "/api/v1/chats?page=1&page_size=10", "获取对话列表")
     record_result("/api/v1/chats", "GET", success, msg)
     
-    # 获取对话详情（使用不存在的ID）
-    success, msg = test_endpoint("GET", "/api/v1/chats/test_chat_id", "获取对话详情", 
-                                expected_status=[200, 404])
-    record_result("/api/v1/chats/{chat_id}", "GET", success, msg)
+    # 获取对话详情（先创建一个对话）
+    # 从对话列表获取一个真实的chat_id，或创建一个新的
+    list_resp = requests.get(f"{REMOTE_API_URL}/api/v1/chats?page=1&page_size=1", headers=headers)
+    chat_id = None
+    if list_resp.status_code == 200:
+        chats = list_resp.json().get("data", {}).get("chats", [])
+        if chats:
+            chat_id = chats[0]["id"]
     
-    # 更新对话
-    update_data = {"name": "更新的对话名称"}
-    success, msg = test_endpoint("PUT", "/api/v1/chats/test_chat_id", "更新对话", 
-                                data=update_data, expected_status=[200, 404])
-    record_result("/api/v1/chats/{chat_id}", "PUT", success, msg)
+    if not chat_id:
+        # 创建一个测试对话
+        create_resp = requests.post(
+            f"{REMOTE_API_URL}/api/v1/chats", 
+            headers=headers,
+            json={
+                "name": "接口测试对话",
+                "dataset_ids": [TEST_DATASET_ID]
+            }
+        )
+        if create_resp.status_code == 200:
+            chat_id = create_resp.json().get("data", {}).get("id")
+    
+    if chat_id:
+        success, msg = test_endpoint("GET", f"/api/v1/chats/{chat_id}", "获取对话详情", 
+                                    expected_status=[200])
+        record_result("/api/v1/chats/{chat_id}", "GET", success, msg)
+        
+        # 更新对话
+        update_data = {"name": "更新的对话名称", "description": "更新的描述"}
+        success, msg = test_endpoint("PUT", f"/api/v1/chats/{chat_id}", "更新对话", 
+                                    data=update_data, expected_status=[200])
+        record_result("/api/v1/chats/{chat_id}", "PUT", success, msg)
+        
+        # 清理：删除测试对话
+        requests.delete(f"{REMOTE_API_URL}/api/v1/chats/{chat_id}", headers=headers)
+    else:
+        record_result("/api/v1/chats/{chat_id}", "GET", False, "无法创建测试对话")
+        record_result("/api/v1/chats/{chat_id}", "PUT", False, "无法创建测试对话")
     
     # 删除对话
     success, msg = test_endpoint("DELETE", "/api/v1/chats/test_chat_id", "删除对话", 

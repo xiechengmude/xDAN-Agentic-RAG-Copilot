@@ -96,6 +96,44 @@ async def verify_api_key(credentials: HTTPAuthorizationCredentials = Depends(sec
         )
     return token
 
+# ==================== Error Code Mapping ====================
+
+# RAGFlow错误码到HTTP状态码的映射
+ERROR_CODE_MAPPING = {
+    # 成功
+    0: 200,
+    
+    # 客户端错误 (4xx)
+    100: 403,  # 权限错误
+    101: 404,  # 资源不存在（无效的UUID）
+    102: 404,  # 文档未找到
+    103: 400,  # 参数错误
+    104: 400,  # 无效的请求格式
+    105: 400,  # 缺少必需参数
+    106: 400,  # 参数值无效
+    107: 409,  # 资源冲突（如重复创建）
+    108: 422,  # 无法处理的实体
+    109: 429,  # 请求过多
+    
+    # 服务器错误 (5xx)
+    200: 500,  # 服务器内部错误
+    201: 502,  # 上游服务错误
+    202: 503,  # 服务不可用
+    203: 504,  # 网关超时
+    
+    # 业务逻辑错误 (4xx)
+    300: 400,  # 业务逻辑错误
+    301: 400,  # 操作不允许
+    302: 400,  # 状态不正确
+    303: 400,  # 资源已存在
+    304: 400,  # 资源正在使用中
+    305: 400,  # 超出限制
+}
+
+def get_http_status_from_ragflow_code(code: int) -> int:
+    """根据RAGFlow错误码获取对应的HTTP状态码"""
+    return ERROR_CODE_MAPPING.get(code, 400)  # 默认返回400
+
 # ==================== Response Helpers ====================
 
 def success_response(data: Any = None, message: str = "Success", meta: Dict[str, Any] = None) -> Dict[str, Any]:
@@ -732,8 +770,12 @@ async def list_datasets(
                 message=result.get("message", "Success")
             )
         else:
+            # 根据错误码返回合适的HTTP状态码
+            error_code = result.get("code", -1)
+            status_code = get_http_status_from_ragflow_code(error_code)
+            
             raise HTTPException(
-                status_code=400, 
+                status_code=status_code, 
                 detail=result.get("message", "RAGFlow API error")
             )
     except Exception as e:
@@ -761,8 +803,12 @@ async def create_dataset(
                 message=result.get("message", "Dataset created successfully")
             )
         else:
+            # 根据错误码返回合适的HTTP状态码
+            error_code = result.get("code", -1)
+            status_code = get_http_status_from_ragflow_code(error_code)
+            
             raise HTTPException(
-                status_code=400, 
+                status_code=status_code, 
                 detail=result.get("message", "Failed to create dataset")
             )
     except Exception as e:
@@ -785,8 +831,12 @@ async def update_dataset(
                 message=result.get("message", "Dataset updated successfully")
             )
         else:
+            # 根据错误码返回合适的HTTP状态码
+            error_code = result.get("code", -1)
+            status_code = get_http_status_from_ragflow_code(error_code)
+            
             raise HTTPException(
-                status_code=400,
+                status_code=status_code,
                 detail=result.get("message", "Failed to update dataset")
             )
     except Exception as e:
@@ -807,12 +857,50 @@ async def delete_dataset(
                 message=result.get("message", "Dataset deleted successfully")
             )
         else:
+            # 根据错误码返回合适的HTTP状态码
+            error_code = result.get("code", -1)
+            status_code = get_http_status_from_ragflow_code(error_code)
+            
             raise HTTPException(
-                status_code=400,
+                status_code=status_code,
                 detail=result.get("message", "Failed to delete dataset")
             )
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Failed to delete dataset: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/v1/datasets", response_model=ApiResponse)
+async def batch_delete_datasets(
+    request: Dict[str, List[str]],
+    ragflow_client: RAGFlowClient = Depends(get_ragflow_client),
+    api_key: str = Depends(verify_api_key)
+):
+    """批量删除知识库 - 代理到RAGFlow"""
+    try:
+        dataset_ids = request.get("ids", [])
+        if not dataset_ids:
+            raise HTTPException(status_code=400, detail="Missing 'ids' field")
+        
+        result = ragflow_client.delete_datasets(dataset_ids)
+        if result.get("code") == 0:
+            return success_response(
+                message=result.get("message", "Datasets deleted successfully")
+            )
+        else:
+            # 根据错误码返回合适的HTTP状态码
+            error_code = result.get("code", -1)
+            status_code = get_http_status_from_ragflow_code(error_code)
+            
+            raise HTTPException(
+                status_code=status_code,
+                detail=result.get("message", "Failed to delete datasets")
+            )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to batch delete datasets: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/v1/datasets/{dataset_id}/documents", response_model=ApiResponse)
@@ -840,8 +928,12 @@ async def upload_documents(
                     message=result.get("message", "Document uploaded successfully")
                 )
             else:
+                # 根据错误码返回合适的HTTP状态码
+                error_code = result.get("code", -1)
+                status_code = get_http_status_from_ragflow_code(error_code)
+                
                 raise HTTPException(
-                    status_code=400,
+                    status_code=status_code,
                     detail=result.get("message", "Failed to upload document")
                 )
         finally:
@@ -873,8 +965,12 @@ async def list_documents(
                 message=result.get("message", "Success")
             )
         else:
+            # 根据错误码返回合适的HTTP状态码
+            error_code = result.get("code", -1)
+            status_code = get_http_status_from_ragflow_code(error_code)
+            
             raise HTTPException(
-                status_code=400,
+                status_code=status_code,
                 detail=result.get("message", "Failed to list documents")
             )
     except Exception as e:
@@ -896,10 +992,16 @@ async def delete_document(
                 message=result.get("message", "Document deleted successfully")
             )
         else:
+            # 根据错误码返回合适的HTTP状态码
+            error_code = result.get("code", -1)
+            status_code = get_http_status_from_ragflow_code(error_code)
+            
             raise HTTPException(
-                status_code=400,
+                status_code=status_code,
                 detail=result.get("message", "Failed to delete document")
             )
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Failed to delete document: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -948,8 +1050,12 @@ async def retrieve(
                 message=result.get("message", "Retrieval successful")
             )
         else:
+            # 根据错误码返回合适的HTTP状态码
+            error_code = result.get("code", -1)
+            status_code = get_http_status_from_ragflow_code(error_code)
+            
             raise HTTPException(
-                status_code=400,
+                status_code=status_code,
                 detail=result.get("message", "Retrieval failed")
             )
     except Exception as e:
@@ -977,10 +1083,16 @@ async def batch_delete_documents(
                 message=result.get("message", "Documents deleted successfully")
             )
         else:
+            # 根据错误码返回合适的HTTP状态码
+            error_code = result.get("code", -1)
+            status_code = get_http_status_from_ragflow_code(error_code)
+            
             raise HTTPException(
-                status_code=400,
+                status_code=status_code,
                 detail=result.get("message", "Failed to delete documents")
             )
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Failed to batch delete documents: {e}")
         raise HTTPException(status_code=500, detail=str(e))
