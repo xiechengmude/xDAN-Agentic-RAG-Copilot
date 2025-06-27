@@ -488,7 +488,7 @@ async def chat_completion(
                 })
                 
                 # Get streaming response from LiteLLM
-                stream_generator = litellm_client.chat_completion(
+                stream_generator = await litellm_client.chat_completion(
                     messages=messages,
                     model=llm_config.get("model_name", "deepseek-chat"),
                     temperature=llm_config.get("temperature", 0.7),

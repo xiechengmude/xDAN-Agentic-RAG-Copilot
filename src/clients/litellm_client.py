@@ -288,10 +288,41 @@ class LiteLLMSDKClientV2:
         
         try:
             if stream:
-                # 直接返回异步生成器
-                return self._stream_completion(
-                    messages, model, temperature, max_tokens, **kwargs
-                )
+                # 对于流式响应，需要 await acompletion 得到 CustomStreamWrapper
+                llm_providers = self.config.get('llm_providers', {})
+                if 'openai' in llm_providers:
+                    openai_config = llm_providers['openai']
+                    return await acompletion(
+                        model="openai/deepseek-chat",
+                        messages=messages,
+                        temperature=temperature,
+                        max_tokens=max_tokens,
+                        stream=True,
+                        api_key=openai_config['api_key'],
+                        api_base=openai_config['base_url'],
+                        proxy=self.proxy_config,
+                        **kwargs
+                    )
+                elif self.router:
+                    return await self.router.acompletion(
+                        model=model,
+                        messages=messages,
+                        temperature=temperature,
+                        max_tokens=max_tokens,
+                        stream=True,
+                        proxy=self.proxy_config,
+                        **kwargs
+                    )
+                else:
+                    return await acompletion(
+                        model=model,
+                        messages=messages,
+                        temperature=temperature,
+                        max_tokens=max_tokens,
+                        stream=True,
+                        proxy=self.proxy_config,
+                        **kwargs
+                    )
             else:
                 return await self._completion(
                     messages, model, temperature, max_tokens, **kwargs
@@ -398,7 +429,7 @@ class LiteLLMSDKClientV2:
         llm_providers = self.config.get('llm_providers', {})
         if 'openai' in llm_providers:
             openai_config = llm_providers['openai']
-            response_stream = acompletion(
+            response_stream = await acompletion(
                 model="openai/deepseek-chat",
                 messages=messages,
                 temperature=temperature,
@@ -410,7 +441,7 @@ class LiteLLMSDKClientV2:
                 **kwargs
             )
         elif self.router:
-            response_stream = self.router.acompletion(
+            response_stream = await self.router.acompletion(
                 model=model,
                 messages=messages,
                 temperature=temperature,
@@ -420,7 +451,7 @@ class LiteLLMSDKClientV2:
                 **kwargs
             )
         else:
-            response_stream = acompletion(
+            response_stream = await acompletion(
                 model=model,
                 messages=messages,
                 temperature=temperature,
