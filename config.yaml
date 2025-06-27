@@ -3,8 +3,8 @@
 
 # ==================== RAGFlow 配置 ====================
 ragflow:
-  api_url: http://150.109.16.195:7080
-  api_key: ragflow-g4ZWE3OTNhNDUxYTExZjA4MTljMDI0Mm
+  api_url: ${RAGFLOW_API_URL:http://150.109.16.195:7080}
+  api_key: ${RAGFLOW_API_KEY:ragflow-g4ZWE3OTNhNDUxYTExZjA4MTljMDI0Mm}
   default_dataset_id: 7e8d9e924cde11f0afc90242ac140006
 
 # ==================== LLM 提供商配置 ====================
@@ -38,7 +38,7 @@ llm_providers:
 # ==================== 模型配置 ====================
 models:
   # 默认模型 - 使用OpenAI兼容接口
-  default_model: gpt-3.5-turbo
+  default_model: deepseek-chat
   
   # S3框架专用模型
   s3_framework:
@@ -165,6 +165,39 @@ performance:
     enabled: true
     batch_size: 5
     timeout: 10  # 秒
+
+# ==================== 外部服务配置 ====================
+external_services:
+  # BrightData SERP搜索配置
+  brightdata:
+    api_key: ${BRIGHTDATA_API_KEY:7f43b8faf2b1e3ccb9c6982c443d9138edc76fb0384bdc551d9ca2da5576ee4a}
+    zone: ${BRIGHTDATA_ZONE:xdan_search_searp}
+    base_url: "https://api.brightdata.com/request"
+    max_concurrent: 5
+    timeout: 30
+    
+  # FireCrawl网页爬取配置
+  firecrawl:
+    api_key: ${FIRECRAWL_API_KEY:fc-87533b34d5834363b71adc2d3870da92}
+    base_url: "https://api.firecrawl.dev"
+    timeout: 60
+    max_pages: 10
+
+# ==================== DeepSearch配置 ====================
+deepsearch:
+  # 搜索配置
+  max_search_rounds: 5
+  max_results_per_round: 10
+  max_crawl_urls: 3
+  
+  # 质量控制
+  min_content_length: 500
+  max_content_length: 20000
+  relevance_threshold: 0.7
+  
+  # 并发控制
+  max_concurrent_crawls: 3
+  crawl_timeout: 60
 
 # ==================== 可观察性配置 ====================
 observability:

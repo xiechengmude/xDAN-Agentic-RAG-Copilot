@@ -1,0 +1,51 @@
+version: '3.9'
+
+services:
+  # Langfuse v2 - 不需要ClickHouse
+  langfuse:
+    image: langfuse/langfuse:2
+    container_name: langfuse
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgresql://langfuse:langfuse@langfuse-db:5432/langfuse
+      - NEXTAUTH_URL=http://localhost:3000
+      - NEXTAUTH_SECRET=mysecretkey
+      - SALT=mysalt
+      - LANGFUSE_ENABLE_EXPERIMENTAL_FEATURES=true
+      # 预设管理员账号
+      - LANGFUSE_INIT_USER_EMAIL=admin@example.com
+      - LANGFUSE_INIT_USER_NAME=Admin User
+      - LANGFUSE_INIT_USER_PASSWORD=admin123456
+      - LANGFUSE_INIT_ORG_ID=default-org
+      - LANGFUSE_INIT_ORG_NAME=Default Organization
+      - LANGFUSE_INIT_PROJECT_ID=default-project
+      - LANGFUSE_INIT_PROJECT_NAME=Default Project
+      - LANGFUSE_INIT_PROJECT_PUBLIC_KEY=pk-lf-default-key
+      - LANGFUSE_INIT_PROJECT_SECRET_KEY=sk-lf-default-secret
+      # 强制初始化项目成员关系
+      - LANGFUSE_AUTO_POSTGRES_MIGRATION_TIMEOUT=120000
+    depends_on:
+      langfuse-db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # PostgreSQL数据库
+  langfuse-db:
+    image: postgres:15-alpine
+    container_name: langfuse-db
+    environment:
+      - POSTGRES_USER=langfuse
+      - POSTGRES_PASSWORD=langfuse
+      - POSTGRES_DB=langfuse
+    volumes:
+      - langfuse-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U langfuse"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  langfuse-postgres-data:

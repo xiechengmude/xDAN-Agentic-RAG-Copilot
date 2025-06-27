@@ -1,0 +1,67 @@
+{
+  "rag_chat": [
+    {
+      "question": "什么是Python？",
+      "status": "failed",
+      "error": "HTTP 404: {\"detail\":\"Not Found\"}",
+      "duration": 0.0042459964752197266
+    },
+    {
+      "question": "Git的基本命令有哪些？",
+      "status": "failed",
+      "error": "HTTP 404: {\"detail\":\"Not Found\"}",
+      "duration": 0.0017161369323730469
+    },
+    {
+      "question": "Docker是什么？",
+      "status": "failed",
+      "error": "HTTP 404: {\"detail\":\"Not Found\"}",
+      "duration": 0.0030231475830078125
+    },
+    {
+      "question": "解释REST API",
+      "status": "failed",
+      "error": "HTTP 404: {\"detail\":\"Not Found\"}",
+      "duration": 0.004194974899291992
+    },
+    {
+      "question": "机器学习的定义",
+      "status": "failed",
+      "error": "HTTP 404: {\"detail\":\"Not Found\"}",
+      "duration": 0.004274845123291016
+    }
+  ],
+  "deepsearch": [
+    {
+      "question": "比较Python和Java的优劣势",
+      "status": "failed",
+      "error": "HTTP 404: {\"detail\":\"Not Found\"}",
+      "duration": 0.0016200542449951172
+    },
+    {
+      "question": "2024年AI发展趋势",
+      "status": "failed",
+      "error": "HTTP 404: {\"detail\":\"Not Found\"}",
+      "duration": 0.0015621185302734375
+    },
+    {
+      "question": "微服务架构最佳实践",
+      "status": "failed",
+      "error": "HTTP 404: {\"detail\":\"Not Found\"}",
+      "duration": 0.0029497146606445312
+    },
+    {
+      "question": "区块链在金融的应用",
+      "status": "failed",
+      "error": "HTTP 404: {\"detail\":\"Not Found\"}",
+      "duration": 0.002866983413696289
+    },
+    {
+      "question": "深度学习框架对比",
+      "status": "failed",
+      "error": "HTTP 404: {\"detail\":\"Not Found\"}",
+      "duration": 0.002962827682495117
+    }
+  ],
+  "test_time": "2025-06-28T02:47:47.181544"
+}

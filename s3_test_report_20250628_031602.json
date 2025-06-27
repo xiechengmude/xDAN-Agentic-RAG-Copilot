@@ -1,0 +1,146 @@
+{
+  "test_time": "2025-06-28T03:15:17.631255",
+  "duration": 44.948339,
+  "results": {
+    "rag_chat": [
+      {
+        "status": "failed",
+        "question": "Python中的装饰器是什么？请解释其工作原理和常见用例",
+        "error": "HTTP 422: {\"detail\":[{\"type\":\"missing\",\"loc\":[\"body\",\"content\"],\"msg\":\"Field required\",\"input\":{\"messages\":[{\"role\":\"user\",\"content\":\"Python中的装饰器是什么？请解释其工作原理和常见用例\"}],\"stream\":false,\"dataset_ids\":[\"7e8d9e924cde11f0afc90242ac140006\"],\"max_rounds\":2}}]}",
+        "duration": 0.041442155838012695
+      },
+      {
+        "status": "failed",
+        "question": "什么是RESTful API的六大约束？每个约束的具体含义",
+        "error": "HTTP 422: {\"detail\":[{\"type\":\"missing\",\"loc\":[\"body\",\"content\"],\"msg\":\"Field required\",\"input\":{\"messages\":[{\"role\":\"user\",\"content\":\"什么是RESTful API的六大约束？每个约束的具体含义\"}],\"stream\":false,\"dataset_ids\":[\"7e8d9e924cde11f0afc90242ac140006\"],\"max_rounds\":2}}]}",
+        "duration": 0.024464130401611328
+      },
+      {
+        "status": "failed",
+        "question": "Docker容器和虚拟机的核心区别是什么？各自的优缺点",
+        "error": "HTTP 422: {\"detail\":[{\"type\":\"missing\",\"loc\":[\"body\",\"content\"],\"msg\":\"Field required\",\"input\":{\"messages\":[{\"role\":\"user\",\"content\":\"Docker容器和虚拟机的核心区别是什么？各自的优缺点\"}],\"stream\":false,\"dataset_ids\":[\"7e8d9e924cde11f0afc90242ac140006\"],\"max_rounds\":2}}]}",
+        "duration": 0.019526243209838867
+      },
+      {
+        "status": "failed",
+        "question": "解释Git的分支模型，包括merge和rebase的区别",
+        "error": "HTTP 422: {\"detail\":[{\"type\":\"missing\",\"loc\":[\"body\",\"content\"],\"msg\":\"Field required\",\"input\":{\"messages\":[{\"role\":\"user\",\"content\":\"解释Git的分支模型，包括merge和rebase的区别\"}],\"stream\":false,\"dataset_ids\":[\"7e8d9e924cde11f0afc90242ac140006\"],\"max_rounds\":2}}]}",
+        "duration": 0.021732091903686523
+      },
+      {
+        "status": "failed",
+        "question": "什么是微服务架构？它解决了哪些单体应用的问题",
+        "error": "HTTP 422: {\"detail\":[{\"type\":\"missing\",\"loc\":[\"body\",\"content\"],\"msg\":\"Field required\",\"input\":{\"messages\":[{\"role\":\"user\",\"content\":\"什么是微服务架构？它解决了哪些单体应用的问题\"}],\"stream\":false,\"dataset_ids\":[\"7e8d9e924cde11f0afc90242ac140006\"],\"max_rounds\":2}}]}",
+        "duration": 0.019200801849365234
+      },
+      {
+        "status": "failed",
+        "question": "如何在Python中实现单例模式？有哪些实现方式",
+        "error": "HTTP 422: {\"detail\":[{\"type\":\"missing\",\"loc\":[\"body\",\"content\"],\"msg\":\"Field required\",\"input\":{\"messages\":[{\"role\":\"user\",\"content\":\"如何在Python中实现单例模式？有哪些实现方式\"}],\"stream\":false,\"dataset_ids\":[\"7e8d9e924cde11f0afc90242ac140006\"],\"max_rounds\":2}}]}",
+        "duration": 0.019937753677368164
+      },
+      {
+        "status": "failed",
+        "question": "Redis的五种基本数据类型及其应用场景",
+        "error": "HTTP 422: {\"detail\":[{\"type\":\"missing\",\"loc\":[\"body\",\"content\"],\"msg\":\"Field required\",\"input\":{\"messages\":[{\"role\":\"user\",\"content\":\"Redis的五种基本数据类型及其应用场景\"}],\"stream\":false,\"dataset_ids\":[\"7e8d9e924cde11f0afc90242ac140006\"],\"max_rounds\":2}}]}",
+        "duration": 0.019906044006347656
+      },
+      {
+        "status": "failed",
+        "question": "SQL中JOIN的几种类型及其区别（INNER、LEFT、RIGHT、FULL）",
+        "error": "HTTP 422: {\"detail\":[{\"type\":\"missing\",\"loc\":[\"body\",\"content\"],\"msg\":\"Field required\",\"input\":{\"messages\":[{\"role\":\"user\",\"content\":\"SQL中JOIN的几种类型及其区别（INNER、LEFT、RIGHT、FULL）\"}],\"stream\":false,\"dataset_ids\":[\"7e8d9e924cde11f0afc90242ac140006\"],\"max_rounds\":2}}]}",
+        "duration": 0.0234072208404541
+      },
+      {
+        "status": "failed",
+        "question": "JavaScript中的闭包是什么？有什么实际用途",
+        "error": "HTTP 422: {\"detail\":[{\"type\":\"missing\",\"loc\":[\"body\",\"content\"],\"msg\":\"Field required\",\"input\":{\"messages\":[{\"role\":\"user\",\"content\":\"JavaScript中的闭包是什么？有什么实际用途\"}],\"stream\":false,\"dataset_ids\":[\"7e8d9e924cde11f0afc90242ac140006\"],\"max_rounds\":2}}]}",
+        "duration": 0.009499073028564453
+      },
+      {
+        "status": "failed",
+        "question": "HTTP状态码的分类规则，列举常见的4xx和5xx错误",
+        "error": "HTTP 422: {\"detail\":[{\"type\":\"missing\",\"loc\":[\"body\",\"content\"],\"msg\":\"Field required\",\"input\":{\"messages\":[{\"role\":\"user\",\"content\":\"HTTP状态码的分类规则，列举常见的4xx和5xx错误\"}],\"stream\":false,\"dataset_ids\":[\"7e8d9e924cde11f0afc90242ac140006\"],\"max_rounds\":2}}]}",
+        "duration": 0.019122838973999023
+      }
+    ],
+    "deepsearch": [
+      {
+        "status": "failed",
+        "question": "全面比较React、Vue和Angular三大前端框架，包括性能、生态系统、学习曲线、适用场景",
+        "error": "HTTP 422: {\"detail\":[{\"type\":\"missing\",\"loc\":[\"body\",\"content\"],\"msg\":\"Field required\",\"input\":{\"messages\":[{\"role\":\"user\",\"content\":\"全面比较React、Vue和Angular三大前端框架，包括性能、生态系统、学习曲线、适用场景\"}],\"stream\":false,\"dataset_ids\":[\"7e8d9e924cde11f0afc90242ac140006\"],\"max_rounds\":5}}]}",
+        "duration": 0.019475936889648438
+      },
+      {
+        "status": "failed",
+        "question": "深度分析Python和Go语言在后端开发中的优劣势，包括性能、并发、生态、部署等方面",
+        "error": "HTTP 422: {\"detail\":[{\"type\":\"missing\",\"loc\":[\"body\",\"content\"],\"msg\":\"Field required\",\"input\":{\"messages\":[{\"role\":\"user\",\"content\":\"深度分析Python和Go语言在后端开发中的优劣势，包括性能、并发、生态、部署等方面\"}],\"stream\":false,\"dataset_ids\":[\"7e8d9e924cde11f0afc90242ac140006\"],\"max_rounds\":5}}]}",
+        "duration": 0.011184215545654297
+      },
+      {
+        "status": "failed",
+        "question": "比较关系型数据库（MySQL、PostgreSQL）和NoSQL数据库（MongoDB、Redis）的设计理念和使用场景",
+        "error": "HTTP 422: {\"detail\":[{\"type\":\"missing\",\"loc\":[\"body\",\"content\"],\"msg\":\"Field required\",\"input\":{\"messages\":[{\"role\":\"user\",\"content\":\"比较关系型数据库（MySQL、PostgreSQL）和NoSQL数据库（MongoDB、Redis）的设计理念和使用场景\"}],\"stream\":false,\"dataset_ids\":[\"7e8d9e924cde11f0afc90242ac140006\"],\"max_rounds\":5}}]}",
+        "duration": 0.015002965927124023
+      },
+      {
+        "status": "failed",
+        "question": "容器编排技术对比：Kubernetes vs Docker Swarm vs Nomad，各自的架构特点和适用场景",
+        "error": "HTTP 422: {\"detail\":[{\"type\":\"missing\",\"loc\":[\"body\",\"content\"],\"msg\":\"Field required\",\"input\":{\"messages\":[{\"role\":\"user\",\"content\":\"容器编排技术对比：Kubernetes vs Docker Swarm vs Nomad，各自的架构特点和适用场景\"}],\"stream\":false,\"dataset_ids\":[\"7e8d9e924cde11f0afc90242ac140006\"],\"max_rounds\":5}}]}",
+        "duration": 0.01170206069946289
+      },
+      {
+        "status": "failed",
+        "question": "消息队列中间件比较：RabbitMQ、Kafka、Redis Pub/Sub的架构差异和性能特点",
+        "error": "HTTP 422: {\"detail\":[{\"type\":\"missing\",\"loc\":[\"body\",\"content\"],\"msg\":\"Field required\",\"input\":{\"messages\":[{\"role\":\"user\",\"content\":\"消息队列中间件比较：RabbitMQ、Kafka、Redis Pub/Sub的架构差异和性能特点\"}],\"stream\":false,\"dataset_ids\":[\"7e8d9e924cde11f0afc90242ac140006\"],\"max_rounds\":5}}]}",
+        "duration": 0.018934011459350586
+      },
+      {
+        "status": "failed",
+        "question": "2024年云原生技术栈的发展趋势，包括Serverless、Service Mesh、GitOps等新兴技术",
+        "error": "HTTP 422: {\"detail\":[{\"type\":\"missing\",\"loc\":[\"body\",\"content\"],\"msg\":\"Field required\",\"input\":{\"messages\":[{\"role\":\"user\",\"content\":\"2024年云原生技术栈的发展趋势，包括Serverless、Service Mesh、GitOps等新兴技术\"}],\"stream\":false,\"dataset_ids\":[\"7e8d9e924cde11f0afc90242ac140006\"],\"max_rounds\":5}}]}",
+        "duration": 0.020405054092407227
+      },
+      {
+        "status": "failed",
+        "question": "大型分布式系统的设计原则和最佳实践，包括CAP理论、分布式事务、数据一致性策略",
+        "error": "HTTP 422: {\"detail\":[{\"type\":\"missing\",\"loc\":[\"body\",\"content\"],\"msg\":\"Field required\",\"input\":{\"messages\":[{\"role\":\"user\",\"content\":\"大型分布式系统的设计原则和最佳实践，包括CAP理论、分布式事务、数据一致性策略\"}],\"stream\":false,\"dataset_ids\":[\"7e8d9e924cde11f0afc90242ac140006\"],\"max_rounds\":5}}]}",
+        "duration": 0.021589040756225586
+      },
+      {
+        "status": "failed",
+        "question": "AI/ML在软件工程中的最新应用：代码生成、自动化测试、性能优化等领域的突破",
+        "error": "HTTP 422: {\"detail\":[{\"type\":\"missing\",\"loc\":[\"body\",\"content\"],\"msg\":\"Field required\",\"input\":{\"messages\":[{\"role\":\"user\",\"content\":\"AI/ML在软件工程中的最新应用：代码生成、自动化测试、性能优化等领域的突破\"}],\"stream\":false,\"dataset_ids\":[\"7e8d9e924cde11f0afc90242ac140006\"],\"max_rounds\":5}}]}",
+        "duration": 0.021564960479736328
+      },
+      {
+        "status": "failed",
+        "question": "现代DevOps实践的演进：从CI/CD到DevSecOps、AIOps的发展路径和关键技术",
+        "error": "HTTP 422: {\"detail\":[{\"type\":\"missing\",\"loc\":[\"body\",\"content\"],\"msg\":\"Field required\",\"input\":{\"messages\":[{\"role\":\"user\",\"content\":\"现代DevOps实践的演进：从CI/CD到DevSecOps、AIOps的发展路径和关键技术\"}],\"stream\":false,\"dataset_ids\":[\"7e8d9e924cde11f0afc90242ac140006\"],\"max_rounds\":5}}]}",
+        "duration": 0.020592212677001953
+      },
+      {
+        "status": "failed",
+        "question": "区块链技术在企业级应用中的实际落地案例分析，包括供应链、金融、医疗等领域",
+        "error": "HTTP 422: {\"detail\":[{\"type\":\"missing\",\"loc\":[\"body\",\"content\"],\"msg\":\"Field required\",\"input\":{\"messages\":[{\"role\":\"user\",\"content\":\"区块链技术在企业级应用中的实际落地案例分析，包括供应链、金融、医疗等领域\"}],\"stream\":false,\"dataset_ids\":[\"7e8d9e924cde11f0afc90242ac140006\"],\"max_rounds\":5}}]}",
+        "duration": 0.018501758575439453
+      }
+    ],
+    "summary": {
+      "rag_chat": {
+        "total": 10,
+        "success": 0,
+        "failed": 10,
+        "avg_duration": 0,
+        "avg_length": 0
+      },
+      "deepsearch": {
+        "total": 10,
+        "success": 0,
+        "failed": 10,
+        "avg_duration": 0,
+        "avg_length": 0
+      }
+    }
+  }
+}

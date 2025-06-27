@@ -18,8 +18,8 @@ redis>=5.0.0
 # LiteLLM for LLM integration
 litellm>=1.0.0
 
-# Langfuse for observability (optional)
-langfuse>=2.0.0
+# Langfuse for LLM observability (指定版本以确保兼容性)
+langfuse==2.45.0
 
 # Additional utilities
 python-multipart>=0.0.9

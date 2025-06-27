@@ -641,12 +641,41 @@ async def chat_completion(
         # Streaming response
         async def generate_sse():
             try:
+                # 构建结构化标签数据
+                s3_tags = {
+                    "think": {
+                        "reasoning": "基于S3架构的智能分析流程",
+                        "strategy": "Search-Select-Synthesize三阶段处理",
+                        "decision": f"执行了{s3_result.get('search_rounds', 0)}轮搜索，选择了{len(s3_result.get('selected_documents', []))}个最相关文档"
+                    },
+                    "search": {
+                        "query": request.content,
+                        "rounds": s3_result.get("search_rounds", 0),
+                        "process": s3_result.get("search_process", []),
+                        "total_found": len(s3_result.get("selected_documents", [])),
+                        "strategy": "RAGFlow向量检索 + 智能体文档选择"
+                    },
+                    "documents": [
+                        {
+                            "id": f"doc_{i+1}",
+                            "title": doc.get("document_keyword", f"文档{i+1}"),
+                            "content": doc.get("content", ""),
+                            "similarity": doc.get("similarity", 0),
+                            "source": doc.get("document_id", ""),
+                            "highlight": doc.get("highlight", ""),
+                            "relevance": "high" if doc.get("similarity", 0) > 0.6 else "medium" if doc.get("similarity", 0) > 0.4 else "low"
+                        }
+                        for i, doc in enumerate(s3_result.get("selected_documents", []))
+                    ]
+                }
+                
                 # Send initial message with S3 search metadata
                 yield format_sse_message({
                     "code": 0,
                     "message": "",
                     "data": {
                         "answer": "",
+                        "s3_tags": s3_tags,
                         "reference": {
                             "total": len(s3_result.get("selected_documents", [])),
                             "chunks": s3_result.get("selected_documents", []),
@@ -737,8 +766,37 @@ async def chat_completion(
                 "s3_documents_found": len(s3_result.get("selected_documents", []))
             })
             
+            # 构建结构化标签数据
+            s3_tags = {
+                "think": {
+                    "reasoning": "基于S3架构的智能分析流程",
+                    "strategy": "Search-Select-Synthesize三阶段处理",
+                    "decision": f"执行了{s3_result.get('search_rounds', 0)}轮搜索，选择了{len(s3_result.get('selected_documents', []))}个最相关文档"
+                },
+                "search": {
+                    "query": request.content,
+                    "rounds": s3_result.get("search_rounds", 0),
+                    "process": s3_result.get("search_process", []),
+                    "total_found": len(s3_result.get("selected_documents", [])),
+                    "strategy": "RAGFlow向量检索 + 智能体文档选择"
+                },
+                "documents": [
+                    {
+                        "id": f"doc_{i+1}",
+                        "title": doc.get("document_keyword", f"文档{i+1}"),
+                        "content": doc.get("content", ""),
+                        "similarity": doc.get("similarity", 0),
+                        "source": doc.get("document_id", ""),
+                        "highlight": doc.get("highlight", ""),
+                        "relevance": "high" if doc.get("similarity", 0) > 0.6 else "medium" if doc.get("similarity", 0) > 0.4 else "low"
+                    }
+                    for i, doc in enumerate(s3_result.get("selected_documents", []))
+                ]
+            }
+            
             return success_response(data={
                 "answer": answer,
+                "s3_tags": s3_tags,
                 "reference": {
                     "total": len(s3_result.get("selected_documents", [])),
                     "chunks": s3_result.get("selected_documents", []),

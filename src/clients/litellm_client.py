@@ -176,24 +176,34 @@ class LiteLLMSDKClientV2:
         try:
             langfuse_config = self.config.get('observability.langfuse', {})
             
-            if not langfuse_config.get('enabled', False):
-                return
-                
-            # 设置 Langfuse 环境变量
-            if langfuse_config.get('public_key'):
-                os.environ['LANGFUSE_PUBLIC_KEY'] = langfuse_config['public_key']
-            if langfuse_config.get('secret_key'):
-                os.environ['LANGFUSE_SECRET_KEY'] = langfuse_config['secret_key']
-            if langfuse_config.get('host'):
-                os.environ['LANGFUSE_HOST'] = langfuse_config['host']
+            # 优先使用环境变量中的配置
+            if os.getenv('LANGFUSE_PUBLIC_KEY') and os.getenv('LANGFUSE_SECRET_KEY'):
+                # 使用环境变量中的配置
+                logger.info("使用环境变量中的Langfuse配置")
+            elif langfuse_config.get('enabled', False):
+                # 使用配置文件中的设置
+                if langfuse_config.get('public_key'):
+                    os.environ['LANGFUSE_PUBLIC_KEY'] = langfuse_config['public_key']
+                if langfuse_config.get('secret_key'):
+                    os.environ['LANGFUSE_SECRET_KEY'] = langfuse_config['secret_key']
+                if langfuse_config.get('host'):
+                    os.environ['LANGFUSE_HOST'] = langfuse_config['host']
+            else:
+                # 使用默认配置（如果提供）
+                os.environ['LANGFUSE_SECRET_KEY'] = "sk-lf-78b5ed03-54ba-4a51-8d20-b1221f17046d"
+                os.environ['LANGFUSE_PUBLIC_KEY'] = "pk-lf-7ea885b0-8c1b-4606-bb5d-c004ed367d1f"
+                os.environ['LANGFUSE_HOST'] = "http://localhost:3000"
                 
             # 启用 Langfuse 回调
-            if not hasattr(litellm, 'success_callback'):
-                litellm.success_callback = []
-            if 'langfuse' not in litellm.success_callback:
-                litellm.success_callback.append('langfuse')
+            litellm.success_callback = ["langfuse"]
+            litellm.failure_callback = ["langfuse"]
+            
+            # 初始化DeepSearch追踪器（如果需要）
+            if hasattr(self, 'deepsearch_mode') and self.deepsearch_mode:
+                from .langfuse_config import DeepSearchLangfuseTracker
+                self.langfuse_tracker = DeepSearchLangfuseTracker()
                 
-            logger.info(f"Langfuse 集成已启用: {langfuse_config.get('host', 'default')}")
+            logger.info(f"Langfuse 集成已启用: {os.environ.get('LANGFUSE_HOST', 'default')}")
         except Exception as e:
             logger.warning(f"Langfuse 集成设置失败: {e}")
             # 继续运行，不影响核心功能
