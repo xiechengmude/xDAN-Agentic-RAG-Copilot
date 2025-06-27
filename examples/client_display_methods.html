@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>流式内容显示方式演示</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .demo-section { margin: 20px 0; padding: 20px; border: 1px solid #ddd; border-radius: 8px; }
+        .output { background: #f5f5f5; padding: 15px; border-radius: 4px; min-height: 50px; margin: 10px 0; }
+        button { padding: 10px 20px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .cursor { animation: blink 1s infinite; }
+        @keyframes blink { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }
+        .typing-cursor::after { content: '|'; animation: blink 1s infinite; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>流式内容显示方式演示</h1>
+        <p>演示如何处理服务器返回的增量内容 <code>answer_delta</code></p>
+
+        <!-- 方式1：累加显示 -->
+        <div class="demo-section">
+            <h3>方式1：累加显示（类似ChatGPT）</h3>
+            <p>每次收到新的增量内容时，累加到之前的内容后面显示</p>
+            <button onclick="startAccumulativeDemo()">开始演示</button>
+            <button onclick="clearAccumulative()">清空</button>
+            <div id="accumulative-output" class="output"></div>
+        </div>
+
+        <!-- 方式2：逐字打字机效果 -->
+        <div class="demo-section">
+            <h3>方式2：逐字打字机效果</h3>
+            <p>收到增量内容后，逐字显示，带有打字机光标效果</p>
+            <button onclick="startTypingDemo()">开始演示</button>
+            <button onclick="clearTyping()">清空</button>
+            <div id="typing-output" class="output typing-cursor"></div>
+        </div>
+
+        <!-- 方式3：实时流式显示 -->
+        <div class="demo-section">
+            <h3>方式3：实时流式显示</h3>
+            <p>立即显示每个增量内容，无延迟</p>
+            <button onclick="startRealTimeDemo()">开始演示</button>
+            <button onclick="clearRealTime()">清空</button>
+            <div id="realtime-output" class="output"></div>
+        </div>
+
+        <!-- 方式4：分段显示 -->
+        <div class="demo-section">
+            <h3>方式4：分段显示</h3>
+            <p>按照标点符号或完整词汇分段显示</p>
+            <button onclick="startChunkedDemo()">开始演示</button>
+            <button onclick="clearChunked()">清空</button>
+            <div id="chunked-output" class="output"></div>
+        </div>
+    </div>
+
+    <script>
+        // 模拟服务器返回的增量数据
+        const mockStreamData = [
+            { answer_delta: "你好" },
+            { answer_delta: "！" },
+            { answer_delta: "我是" },
+            { answer_delta: "AI" },
+            { answer_delta: "助手" },
+            { answer_delta: "，" },
+            { answer_delta: "很高兴" },
+            { answer_delta: "为您" },
+            { answer_delta: "服务" },
+            { answer_delta: "。" },
+            { answer_delta: "有什么" },
+            { answer_delta: "可以" },
+            { answer_delta: "帮助" },
+            { answer_delta: "您的" },
+            { answer_delta: "吗？" }
+        ];
+
+        // 方式1：累加显示
+        function startAccumulativeDemo() {
+            const output = document.getElementById('accumulative-output');
+            let accumulated = '';
+            let index = 0;
+
+            const interval = setInterval(() => {
+                if (index >= mockStreamData.length) {
+                    clearInterval(interval);
+                    return;
+                }
+
+                // 累加增量内容
+                accumulated += mockStreamData[index].answer_delta;
+                output.textContent = accumulated;
+                index++;
+            }, 300);
+        }
+
+        function clearAccumulative() {
+            document.getElementById('accumulative-output').textContent = '';
+        }
+
+        // 方式2：逐字打字机效果
+        function startTypingDemo() {
+            const output = document.getElementById('typing-output');
+            let accumulated = '';
+            let index = 0;
+
+            const interval = setInterval(() => {
+                if (index >= mockStreamData.length) {
+                    clearInterval(interval);
+                    output.classList.remove('typing-cursor');
+                    return;
+                }
+
+                accumulated += mockStreamData[index].answer_delta;
+                output.textContent = accumulated;
+                index++;
+            }, 500); // 稍慢的速度，更像打字机
+        }
+
+        function clearTyping() {
+            const output = document.getElementById('typing-output');
+            output.textContent = '';
+            output.classList.add('typing-cursor');
+        }
+
+        // 方式3：实时流式显示
+        function startRealTimeDemo() {
+            const output = document.getElementById('realtime-output');
+            let accumulated = '';
+            let index = 0;
+
+            const interval = setInterval(() => {
+                if (index >= mockStreamData.length) {
+                    clearInterval(interval);
+                    return;
+                }
+
+                // 立即显示，无延迟
+                accumulated += mockStreamData[index].answer_delta;
+                output.innerHTML = accumulated + '<span class="cursor">|</span>';
+                index++;
+            }, 100); // 很快的速度
+        }
+
+        function clearRealTime() {
+            document.getElementById('realtime-output').innerHTML = '';
+        }
+
+        // 方式4：分段显示
+        function startChunkedDemo() {
+            const output = document.getElementById('chunked-output');
+            let accumulated = '';
+            let buffer = '';
+            let index = 0;
+
+            const interval = setInterval(() => {
+                if (index >= mockStreamData.length) {
+                    if (buffer) {
+                        accumulated += buffer;
+                        output.textContent = accumulated;
+                    }
+                    clearInterval(interval);
+                    return;
+                }
+
+                buffer += mockStreamData[index].answer_delta;
+                
+                // 遇到标点符号时显示
+                if (buffer.includes('！') || buffer.includes('。') || buffer.includes('，') || buffer.includes('？')) {
+                    accumulated += buffer;
+                    output.textContent = accumulated;
+                    buffer = '';
+                }
+                
+                index++;
+            }, 200);
+        }
+
+        function clearChunked() {
+            document.getElementById('chunked-output').textContent = '';
+        }
+
+        // 实际使用中的代码示例
+        async function realWorldExample() {
+            // 这是实际项目中如何处理流式数据的示例
+            const response = await fetch('/api/v1/chats/123/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer your-token'
+                },
+                body: JSON.stringify({
+                    content: '你好',
+                    stream: true
+                })
+            });
+
+            const reader = response.body.getReader();
+            let accumulated = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                const chunk = new TextDecoder().decode(value);
+                const lines = chunk.split('\n');
+
+                for (const line of lines) {
+                    if (line.startsWith('data:')) {
+                        const jsonStr = line.slice(5).trim();
+                        if (jsonStr) {
+                            try {
+                                const data = JSON.parse(jsonStr);
+                                if (data.data && data.data.answer_delta) {
+                                    // 方式1：累加显示
+                                    accumulated += data.data.answer_delta;
+                                    document.getElementById('chat-output').textContent = accumulated;
+
+                                    // 方式2：逐字显示
+                                    // typewriterEffect(data.data.answer_delta);
+
+                                    // 方式3：实时显示
+                                    // document.getElementById('chat-output').textContent += data.data.answer_delta;
+                                }
+                            } catch (e) {
+                                console.error('JSON parse error:', e);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+</html> 
