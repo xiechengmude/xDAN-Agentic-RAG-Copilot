@@ -287,46 +287,34 @@ class LiteLLMSDKClientV2:
         self.model_usage[model] = self.model_usage.get(model, 0) + 1
         
         try:
-            if stream:
-                # 对于流式响应，需要 await acompletion 得到 CustomStreamWrapper
-                llm_providers = self.config.get('llm_providers', {})
-                if 'openai' in llm_providers:
-                    openai_config = llm_providers['openai']
-                    return await acompletion(
-                        model="openai/deepseek-chat",
-                        messages=messages,
-                        temperature=temperature,
-                        max_tokens=max_tokens,
-                        stream=True,
-                        api_key=openai_config['api_key'],
-                        api_base=openai_config['base_url'],
-                        proxy=self.proxy_config,
-                        **kwargs
-                    )
-                elif self.router:
-                    return await self.router.acompletion(
-                        model=model,
-                        messages=messages,
-                        temperature=temperature,
-                        max_tokens=max_tokens,
-                        stream=True,
-                        proxy=self.proxy_config,
-                        **kwargs
-                    )
-                else:
-                    return await acompletion(
-                        model=model,
-                        messages=messages,
-                        temperature=temperature,
-                        max_tokens=max_tokens,
-                        stream=True,
-                        proxy=self.proxy_config,
-                        **kwargs
-                    )
+            # 统一处理流式和非流式请求
+            llm_providers = self.config.get('llm_providers', {})
+            
+            # 构建通用参数
+            completion_params = {
+                "messages": messages,
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+                "stream": stream,
+                "proxy": self.proxy_config,
+                **kwargs
+            }
+            
+            # 根据配置选择正确的提供者
+            if 'openai' in llm_providers:
+                openai_config = llm_providers['openai']
+                completion_params.update({
+                    "model": "openai/deepseek-chat",
+                    "api_key": openai_config['api_key'],
+                    "api_base": openai_config['base_url']
+                })
+                return await acompletion(**completion_params)
+            elif self.router:
+                completion_params["model"] = model
+                return await self.router.acompletion(**completion_params)
             else:
-                return await self._completion(
-                    messages, model, temperature, max_tokens, **kwargs
-                )
+                completion_params["model"] = model
+                return await acompletion(**completion_params)
                 
         except Exception as e:
             self.error_count += 1
@@ -380,89 +368,6 @@ class LiteLLMSDKClientV2:
                 max_tokens if max_tokens is not None else 2000
             )
     
-    async def _completion(self, messages, model, temperature, max_tokens, **kwargs):
-        """非流式完成"""
-        # 添加超时设置
-        timeout = kwargs.pop('timeout', 30)  # 默认30秒超时
-        
-        # 直接使用OpenAI兼容接口，避免router问题
-        llm_providers = self.config.get('llm_providers', {})
-        if 'openai' in llm_providers:
-            openai_config = llm_providers['openai']
-            return await acompletion(
-                model="openai/deepseek-chat",
-                messages=messages,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                api_key=openai_config['api_key'],
-                api_base=openai_config['base_url'],
-                timeout=timeout,
-                proxy=self.proxy_config,
-                **kwargs
-            )
-        
-        # Fallback to router
-        if self.router:
-            return await self.router.acompletion(
-                model=model,
-                messages=messages,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                timeout=timeout,
-                proxy=self.proxy_config,
-                **kwargs
-            )
-        else:
-            return await acompletion(
-                model=model,
-                messages=messages,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                timeout=timeout,
-                proxy=self.proxy_config,
-                **kwargs
-            )
-    
-    async def _stream_completion(self, messages, model, temperature, max_tokens, **kwargs):
-        """流式完成"""
-        # 直接使用OpenAI兼容接口，避免router问题
-        llm_providers = self.config.get('llm_providers', {})
-        if 'openai' in llm_providers:
-            openai_config = llm_providers['openai']
-            response_stream = await acompletion(
-                model="openai/deepseek-chat",
-                messages=messages,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                stream=True,
-                api_key=openai_config['api_key'],
-                api_base=openai_config['base_url'],
-                proxy=self.proxy_config,
-                **kwargs
-            )
-        elif self.router:
-            response_stream = await self.router.acompletion(
-                model=model,
-                messages=messages,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                stream=True,
-                proxy=self.proxy_config,
-                **kwargs
-            )
-        else:
-            response_stream = await acompletion(
-                model=model,
-                messages=messages,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                stream=True,
-                proxy=self.proxy_config,
-                **kwargs
-            )
-        
-        async for chunk in response_stream:
-            yield chunk
     
     def get_available_models(self) -> List[str]:
         """获取可用模型列表"""
