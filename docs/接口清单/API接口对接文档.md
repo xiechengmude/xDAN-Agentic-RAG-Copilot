@@ -496,6 +496,8 @@ POST /api/v1/datasets/{dataset_id}/documents/parse
 
 ## 对话管理
 
+**注意**: `GET /api/v1/chats/{chat_id}` 和 `PUT /api/v1/chats/{chat_id}` 这两个接口未实现。
+
 ### 1. 创建对话
 ```http
 POST /api/v1/chats
@@ -566,7 +568,7 @@ DELETE /api/v1/chats/{chat_id}
 
 ### 知识库检索
 ```http
-POST /api/v1/retrieval
+POST /api/v1/retrieve
 ```
 
 **请求体**:
@@ -976,8 +978,8 @@ curl -X POST "http://localhost:8050/api/v1/chats/{chat_id}/completions" \
 
 #### 6. 检索测试
 ```bash
-curl -X POST "http://localhost:8050/api/v1/retrieval" \
-  -H "Authorization: Bearer ragflow-g4ZWE3OTNhNDUxYTExZjA8MTljMDI0Mm" \
+curl -X POST "http://localhost:8050/api/v1/retrieve" \
+  -H "Authorization: Bearer xDAN-RAG-Service-Demo-Key" \
   -H "Content-Type: application/json" \
   -d '{
     "question": "文档中的关键信息",
@@ -1064,7 +1066,7 @@ volumes:
 
 ---
 
-**文档版本**: v2.1  
+**文档版本**: v2.2  
 **最后更新**: 2025-06-27  
 **测试状态**: ✅ 已验证所有接口  
 **服务名称**: xDAN Rag Copilot API Service  
@@ -1078,3 +1080,5 @@ volumes:
 - 更新删除接口和名称搜索说明
 - 明确流式响应为真正的逐字增量
 - 添加解析文档接口
+- 修正检索接口路径（/api/v1/retrieve）
+- 标注未实现的对话管理接口

@@ -168,9 +168,9 @@ const viewReferenceDocument = async (documentId, datasetId) => {
 
 ### 4. 知识库检索
 ```javascript
-// POST /api/v1/retrieval
+// POST /api/v1/retrieve
 const searchKnowledge = async (question, datasetIds) => {
-  const response = await fetch(`${API_BASE_URL}/api/v1/retrieval`, {
+  const response = await fetch(`${API_BASE_URL}/api/v1/retrieve`, {
     method: 'POST',
     headers,
     body: JSON.stringify({
