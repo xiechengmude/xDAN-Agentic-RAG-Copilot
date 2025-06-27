@@ -147,7 +147,11 @@ Note: Only the content between <important_info> will be used by the generation m
             检索结果和成功状态
         """
         try:
-            logger.info(f"S3-Search阶段：检索问题 - {question[:50]}...")
+            logger.info(f"[S3_TRACE] S3-Search阶段：检索问题 - {question[:50]}...")
+            logger.info(f"[S3_TRACE] - Dataset IDs: {dataset_ids}")
+            logger.info(f"[S3_TRACE] - Top K: {top_k}")
+            logger.info(f"[S3_TRACE] - RAGFlow client API URL: {self.ragflow_client.api_url}")
+            logger.info(f"[S3_TRACE] - RAGFlow client API Key: {self.ragflow_client.api_key}")
             
             # 使用RAGFlow进行检索
             result = self.ragflow_client.retrieve_chunks(
@@ -156,16 +160,21 @@ Note: Only the content between <important_info> will be used by the generation m
                 page_size=top_k
             )
             
+            logger.info(f"[S3_TRACE] RAGFlow返回结果: {result}")
+            
             if result.get("code") == 0:
                 chunks = result.get("data", {}).get("chunks", [])
-                logger.info(f"S3-Search成功：找到 {len(chunks)} 个相关文档")
+                logger.info(f"[S3_TRACE] S3-Search成功：找到 {len(chunks)} 个相关文档")
                 return chunks, True
             else:
-                logger.error(f"S3-Search失败：{result.get('message')}")
+                logger.error(f"[S3_TRACE] S3-Search失败：{result.get('message')}")
+                logger.error(f"[S3_TRACE] 完整错误结果: {result}")
                 return [], False
                 
         except Exception as e:
-            logger.error(f"S3-Search异常：{e}")
+            logger.error(f"[S3_TRACE] S3-Search异常：{e}")
+            import traceback
+            logger.error(f"[S3_TRACE] 异常追踪: {traceback.format_exc()}")
             return [], False
 
     async def select_phase(self, question: str, search_results: List[Dict], 

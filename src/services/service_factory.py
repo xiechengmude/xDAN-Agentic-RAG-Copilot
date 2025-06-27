@@ -27,14 +27,19 @@ class ServiceFactory:
         """
         if config is None:
             # 从配置文件加载
+            logger.info(f"[S3_TRACE] Loading config from file")
             full_config = get_config()
             ragflow_config = full_config.get_ragflow_config()
+            logger.info(f"[S3_TRACE] RAGFlow config loaded: {list(ragflow_config.keys())}")
             
             config = {
                 'ragflow_api_url': ragflow_config.get('api_url'),
                 'ragflow_api_key': ragflow_config.get('api_key'),
                 'default_dataset_id': ragflow_config.get('default_dataset_id')
             }
+            logger.info(f"[S3_TRACE] Config prepared: api_url={config.get('ragflow_api_url')}")
+            logger.info(f"[S3_TRACE] Config prepared: api_key exists={bool(config.get('ragflow_api_key'))}")
+            logger.info(f"[S3_TRACE] Config prepared: default_dataset_id={config.get('default_dataset_id')}")
         
         logger.info("创建S3服务实例")
         return create_s3_service(config)
@@ -56,4 +61,19 @@ def get_s3_service(config: Optional[Dict[str, Any]] = None) -> S3Service:
 
 def get_default_service() -> S3Service:
     """获取默认配置的S3服务"""
-    return ServiceFactory.create_default_service()
+    logger.info(f"[S3_TRACE] get_default_service called")
+    
+    # 记录环境变量
+    import os
+    logger.info(f"[S3_TRACE] LITELLM_API_BASE: {os.getenv('LITELLM_API_BASE', 'not set')}")
+    logger.info(f"[S3_TRACE] LITELLM_API_KEY exists: {bool(os.getenv('LITELLM_API_KEY'))}")
+    logger.info(f"[S3_TRACE] RAGFLOW_API_URL: {os.getenv('RAGFLOW_API_URL', 'not set')}")
+    logger.info(f"[S3_TRACE] RAGFLOW_API_KEY exists: {bool(os.getenv('RAGFLOW_API_KEY'))}")
+    
+    try:
+        service = ServiceFactory.create_default_service()
+        logger.info(f"[S3_TRACE] S3Service instance created: {service}")
+        return service
+    except Exception as e:
+        logger.error(f"[S3_TRACE] Failed to create S3 service: {e}", exc_info=True)
+        raise

@@ -214,14 +214,18 @@ async def lifespan(app: FastAPI):
         
         # Initialize S3 service
         try:
+            logger.info("[S3_TRACE] Starting S3 service initialization...")
             from src.services.service_factory import get_default_service
             
             # 使用工厂模式创建S3服务
             s3_service = get_default_service()
+            logger.info(f"[S3_TRACE] S3 service initialized: {s3_service}")
+            logger.info(f"[S3_TRACE] S3 service type: {type(s3_service)}")
             logger.info("S3 service initialized successfully using factory pattern")
             
         except Exception as e:
-            logger.error(f"Failed to initialize S3 service: {e}")
+            logger.error(f"[S3_TRACE] Failed to initialize S3 service: {e}")
+            logger.error(f"[S3_TRACE] Exception type: {type(e)}", exc_info=True)
             s3_service = None
         
         _initialized = True
@@ -334,11 +338,24 @@ def format_sse_message(data: Any) -> str:
 
 async def enhance_with_s3_framework(question: str, dataset_ids: List[str], s3_service: S3Service) -> Dict[str, Any]:
     """Enhance question with S3 framework (Search-Select-Synthesize)"""
+    logger.info(f"[S3_TRACE] enhance_with_s3_framework called")
+    logger.info(f"[S3_TRACE] - Question: {question[:100]}...")
+    logger.info(f"[S3_TRACE] - Dataset IDs: {dataset_ids}")
+    logger.info(f"[S3_TRACE] - S3 service type: {type(s3_service)}")
+    
     if not dataset_ids:
+        logger.warning(f"[S3_TRACE] No dataset IDs provided, returning empty result")
         return {"enhanced_question": question, "selected_documents": [], "search_process": []}
     
     try:
         # 使用S3服务执行问答
+        logger.info(f"[S3_TRACE] Calling s3_service.ask()")
+        logger.info(f"[S3_TRACE] S3 ask parameters:")
+        logger.info(f"[S3_TRACE] - question: {question}")
+        logger.info(f"[S3_TRACE] - dataset_ids: {dataset_ids}")
+        logger.info(f"[S3_TRACE] - max_rounds: 3")
+        logger.info(f"[S3_TRACE] - stream: False")
+        
         s3_result = None
         async for result in s3_service.ask(
             question=question,
@@ -346,14 +363,30 @@ async def enhance_with_s3_framework(question: str, dataset_ids: List[str], s3_se
             max_rounds=3,
             stream=False
         ):
+            logger.info(f"[S3_TRACE] Received result from s3_service.ask")
+            logger.info(f"[S3_TRACE] Result keys: {list(result.keys()) if result else 'None'}")
             s3_result = result
             break  # 非流式模式，只取第一个结果
         
-        if s3_result and s3_result.get('workflow_info'):
-            # 从工作流信息中提取搜索过程
-            workflow = s3_result['workflow_info']
-            selected_docs = workflow.get('selected_documents', [])
-            search_rounds = workflow.get('search_rounds', 0)
+        if s3_result and s3_result.get('workflow_completed'):
+            # S3工作流已完成，提取搜索结果
+            logger.info(f"[S3_TRACE] S3 workflow completed successfully")
+            logger.info(f"[S3_TRACE] - Result keys: {list(s3_result.keys())}")
+            
+            selected_docs = s3_result.get('selected_documents', [])
+            rounds = s3_result.get('rounds', [])
+            search_rounds = len(rounds)
+            logger.info(f"[S3_TRACE] - Selected documents: {len(selected_docs)}")
+            logger.info(f"[S3_TRACE] - Search rounds: {search_rounds}")
+            
+            # 构建搜索过程信息
+            search_process = []
+            for i, round_info in enumerate(rounds, 1):
+                query = round_info.get('search_query', 'N/A')
+                count = round_info.get('search_results_count', 0)
+                search_process.append(f"轮次{i}: 查询'{query}' -> 找到{count}个文档")
+            
+            logger.info(f"[S3_TRACE] - Search process steps: {len(search_process)}")
             
             if selected_docs:
                 context = "\n\n".join([
@@ -372,10 +405,12 @@ async def enhance_with_s3_framework(question: str, dataset_ids: List[str], s3_se
                 return {
                     "enhanced_question": enhanced_question,
                     "selected_documents": selected_docs,
-                    "search_process": workflow.get('search_process', []),
+                    "search_process": search_process,
                     "search_rounds": search_rounds
                 }
         
+        logger.warning(f"[S3_TRACE] No workflow info in S3 result")
+        logger.warning(f"[S3_TRACE] S3 result: {s3_result}")
         logger.warning(f"S3框架未找到相关文档: {question}")
         return {
             "enhanced_question": question,
@@ -384,6 +419,9 @@ async def enhance_with_s3_framework(question: str, dataset_ids: List[str], s3_se
         }
         
     except Exception as e:
+        logger.error(f"[S3_TRACE] Exception in enhance_with_s3_framework: {e}")
+        logger.error(f"[S3_TRACE] Exception type: {type(e)}")
+        logger.error(f"[S3_TRACE] Full traceback:", exc_info=True)
         logger.error(f"S3 framework enhancement failed: {e}")
         # 如果S3框架失败，返回原始问题
         return {"enhanced_question": question, "selected_documents": [], "search_process": []}
@@ -538,10 +576,15 @@ async def chat_completion(
     api_key: str = Depends(verify_api_key)
 ):
     """发送消息并获取AI回复（支持SSE流式响应）"""
+    logger.info(f"[S3_TRACE] Chat completion started for chat_id: {chat_id}")
+    logger.info(f"[S3_TRACE] Request content: {request.content[:100]}...")
+    
     # Get chat info
     chat_info = await get_chat_info(chat_id, db)
     if not chat_info:
         raise HTTPException(status_code=404, detail="Chat not found")
+    
+    logger.info(f"[S3_TRACE] Chat info retrieved: dataset_ids={chat_info.get('dataset_ids')}")
     
     # Save user message
     await save_message(chat_id, "user", request.content, db)
@@ -560,16 +603,29 @@ async def chat_completion(
     # Enhance with S3 framework if datasets are associated
     s3_result = {"enhanced_question": request.content, "selected_documents": [], "search_process": []}
     
+    logger.info(f"[S3_TRACE] Checking S3 conditions:")
+    logger.info(f"[S3_TRACE] - Has dataset_ids: {bool(chat_info['dataset_ids'])}")
+    logger.info(f"[S3_TRACE] - Dataset IDs: {chat_info['dataset_ids']}")
+    logger.info(f"[S3_TRACE] - S3 service exists: {s3_service is not None}")
+    logger.info(f"[S3_TRACE] - S3 service instance: {s3_service}")
+    
     if chat_info["dataset_ids"] and s3_service:
+        logger.info(f"[S3_TRACE] S3 enhancement conditions met, calling enhance_with_s3_framework")
         try:
             s3_result = await enhance_with_s3_framework(
                 request.content,
                 chat_info["dataset_ids"],
                 s3_service
             )
+            logger.info(f"[S3_TRACE] S3 enhancement completed")
+            logger.info(f"[S3_TRACE] - Documents found: {len(s3_result.get('selected_documents', []))}")
+            logger.info(f"[S3_TRACE] - Search rounds: {s3_result.get('search_rounds', 0)}")
+            logger.info(f"[S3_TRACE] - Has search process: {bool(s3_result.get('search_process'))}")
         except Exception as e:
-            logger.error(f"S3 framework enhancement failed: {e}")
+            logger.error(f"[S3_TRACE] S3 framework enhancement failed: {e}", exc_info=True)
             # 如果S3增强失败，使用原始问题
+    else:
+        logger.warning(f"[S3_TRACE] S3 enhancement skipped - conditions not met")
             
     enhanced_question = s3_result["enhanced_question"]
     
