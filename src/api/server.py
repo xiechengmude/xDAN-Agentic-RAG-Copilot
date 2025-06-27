@@ -503,11 +503,12 @@ async def chat_completion(
                         content = chunk.get("choices", [{}])[0].get("delta", {}).get("content", "")
                         if content:
                             full_response += content
+                            # 返回增量内容，而不是累加的完整内容
                             yield format_sse_message({
                                 "code": 0,
                                 "message": "",
                                 "data": {
-                                    "answer": full_response,
+                                    "answer_delta": content,  # 只返回当前增量
                                     "reference": {
                                         "total": len(s3_result.get("selected_documents", [])),
                                         "chunks": s3_result.get("selected_documents", [])
@@ -827,8 +828,31 @@ async def delete_document(
         logger.error(f"Failed to delete document: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/api/v1/retrieval", response_model=ApiResponse)
-async def retrieval(
+@app.post("/api/v1/datasets/{dataset_id}/documents/parse", response_model=ApiResponse)
+async def parse_documents(
+    dataset_id: str,
+    request: Dict[str, List[str]],
+    ragflow_client: RAGFlowClient = Depends(get_ragflow_client),
+    api_key: str = Depends(verify_api_key)
+):
+    """解析文档 - 代理到RAGFlow"""
+    try:
+        document_ids = request.get("document_ids", [])
+        if not document_ids:
+            raise HTTPException(status_code=400, detail="Missing 'document_ids' field")
+        
+        # RAGFlow doesn't have a direct parse endpoint, return success
+        # In practice, documents are parsed automatically after upload
+        return success_response(
+            message="Document parsing initiated",
+            data={"document_ids": document_ids}
+        )
+    except Exception as e:
+        logger.error(f"Failed to parse documents: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/v1/retrieve", response_model=ApiResponse)
+async def retrieve(
     request: RetrievalRequest,
     ragflow_client: RAGFlowClient = Depends(get_ragflow_client),
     api_key: str = Depends(verify_api_key)

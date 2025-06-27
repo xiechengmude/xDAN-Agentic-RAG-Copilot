@@ -138,18 +138,40 @@ class RAGFlowClient:
         """
         url = f"{self.api_url}/api/v1/datasets"
         
+        # RAGFlow API不支持name参数作为搜索过滤器
+        # 需要获取所有数据后在客户端过滤
         params = {
-            "page": page,
-            "page_size": page_size
+            "page": 1,  # 先获取第一页
+            "page_size": 100  # 获取更多数据以便过滤
         }
-        
-        if name:
-            params["name"] = name
         
         try:
             response = self.session.get(url, params=params, timeout=self.timeout)
             response.raise_for_status()
-            return response.json()
+            result = response.json()
+            
+            # 如果成功获取数据且指定了name参数，进行客户端过滤
+            if result.get("code") == 0 and name and result.get("data"):
+                filtered_data = [
+                    dataset for dataset in result["data"]
+                    if name.lower() in dataset.get("name", "").lower()
+                ]
+                # 实现分页
+                start_idx = (page - 1) * page_size
+                end_idx = start_idx + page_size
+                result["data"] = filtered_data[start_idx:end_idx]
+                
+            # 如果没有name参数但指定了分页，重新请求正确的分页
+            elif result.get("code") == 0 and not name and (page != 1 or page_size != 100):
+                params = {
+                    "page": page,
+                    "page_size": page_size
+                }
+                response = self.session.get(url, params=params, timeout=self.timeout)
+                response.raise_for_status()
+                result = response.json()
+                
+            return result
         except requests.exceptions.RequestException as e:
             logger.error(f"获取数据集列表失败: {e}")
             return {"code": -1, "message": str(e)}
@@ -191,20 +213,28 @@ class RAGFlowClient:
             return {"code": 500, "message": str(e), "data": None}
     
     def delete_datasets(self, dataset_ids: List[str]) -> Dict[str, Any]:
-        """删除知识库"""
-        # 删除单个知识库
-        if len(dataset_ids) == 1:
-            url = f"{self.api_url}/api/v1/datasets/{dataset_ids[0]}"
-            try:
-                response = self.session.delete(url, timeout=self.timeout)
-                response.raise_for_status()
-                return response.json()
-            except requests.exceptions.RequestException as e:
-                logger.error(f"删除知识库失败: {e}")
-                return {"code": 500, "message": str(e), "data": None}
-        else:
-            # 批量删除暂不支持
-            return {"code": 400, "message": "批量删除暂不支持", "data": None}
+        """删除知识库 - 使用批量删除接口"""
+        url = f"{self.api_url}/api/v1/datasets"
+        
+        try:
+            # RAGFlow使用批量删除接口，即使是单个删除
+            data = {"ids": dataset_ids}
+            response = self.session.delete(url, json=data, timeout=self.timeout)
+            response.raise_for_status()
+            result = response.json()
+            
+            # 补充完整的响应格式
+            if result.get("code") == 0:
+                return {
+                    "code": 0,
+                    "message": "Dataset(s) deleted successfully",
+                    "data": None
+                }
+            else:
+                return result
+        except requests.exceptions.RequestException as e:
+            logger.error(f"删除知识库失败: {e}")
+            return {"code": 500, "message": str(e), "data": None}
     
     def upload_documents(self, dataset_id: str, file_paths: List[str]) -> Dict[str, Any]:
         """上传文档到知识库"""
@@ -245,28 +275,28 @@ class RAGFlowClient:
             return {"code": 500, "message": str(e), "data": None}
     
     def delete_documents(self, dataset_id: str, document_ids: List[str]) -> Dict[str, Any]:
-        """删除文档"""
-        if len(document_ids) == 1:
-            # 单个文档删除
-            url = f"{self.api_url}/api/v1/datasets/{dataset_id}/documents/{document_ids[0]}"
-            try:
-                response = self.session.delete(url, timeout=self.timeout)
-                response.raise_for_status()
-                return response.json()
-            except requests.exceptions.RequestException as e:
-                logger.error(f"删除文档失败: {e}")
-                return {"code": 500, "message": str(e), "data": None}
-        else:
-            # 批量删除文档
-            url = f"{self.api_url}/api/v1/datasets/{dataset_id}/documents"
+        """删除文档 - 使用批量删除接口"""
+        # RAGFlow使用批量删除接口，即使是单个文档
+        url = f"{self.api_url}/api/v1/datasets/{dataset_id}/documents"
+        
+        try:
             data = {"ids": document_ids}
-            try:
-                response = self.session.delete(url, json=data, timeout=self.timeout)
-                response.raise_for_status()
-                return response.json()
-            except requests.exceptions.RequestException as e:
-                logger.error(f"批量删除文档失败: {e}")
-                return {"code": 500, "message": str(e), "data": None}
+            response = self.session.delete(url, json=data, timeout=self.timeout)
+            response.raise_for_status()
+            result = response.json()
+            
+            # 补充完整的响应格式
+            if result.get("code") == 0:
+                return {
+                    "code": 0,
+                    "message": "Document(s) deleted successfully",
+                    "data": None
+                }
+            else:
+                return result
+        except requests.exceptions.RequestException as e:
+            logger.error(f"删除文档失败: {e}")
+            return {"code": 500, "message": str(e), "data": None}
     
     def get_document_content(self, dataset_id: str, document_id: str) -> str:
         """获取文档内容"""

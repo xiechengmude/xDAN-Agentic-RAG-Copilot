@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-调试流式接口的具体行为
+测试修复后的流式接口 - 验证增量内容
 """
 
 import requests
@@ -21,9 +21,9 @@ def create_test_chat():
         f"{API_BASE_URL}/api/v1/chats",
         headers=headers,
         json={
-            "name": f"调试测试 - {time.strftime('%Y-%m-%d %H:%M:%S')}",
+            "name": f"增量测试 - {time.strftime('%Y-%m-%d %H:%M:%S')}",
             "dataset_ids": [],
-            "description": "调试流式接口"
+            "description": "测试增量流式响应"
         }
     )
     
@@ -33,15 +33,15 @@ def create_test_chat():
             return result["data"]["id"]
     return None
 
-def debug_streaming_response(chat_id):
-    """详细调试流式响应"""
-    print("发送消息: '请说一个简短的故事'")
+def test_incremental_streaming(chat_id):
+    """测试增量流式响应"""
+    print("发送消息: '请用中文说一个10个字的句子'")
     
     response = requests.post(
         f"{API_BASE_URL}/api/v1/chats/{chat_id}/completions",
         headers=headers,
         json={
-            "content": "请说一个简短的故事",
+            "content": "请用中文说一个10个字的句子",
             "stream": True
         },
         stream=True
@@ -51,9 +51,9 @@ def debug_streaming_response(chat_id):
         print(f"请求失败: {response.status_code}")
         return False
     
-    print("\n=== 流式响应调试 ===")
+    print("\n=== 增量流式响应测试 ===")
     chunk_count = 0
-    previous_answer = ""
+    accumulated_content = ""
     
     for line in response.iter_lines():
         if line:
@@ -68,42 +68,40 @@ def debug_streaming_response(chat_id):
                         
                         print(f"\n--- Chunk {chunk_count} ---")
                         print(f"Code: {data.get('code')}")
-                        print(f"Message: {data.get('message')}")
                         
                         if data.get("data") == True:
                             print("Data: [STREAM_END]")
+                            break
                         elif isinstance(data.get("data"), dict):
-                            current_answer = data["data"].get("answer", "")
-                            print(f"Answer Length: {len(current_answer)}")
+                            # 检查是否有增量内容
+                            answer_delta = data["data"].get("answer_delta", "")
+                            if answer_delta:
+                                print(f"增量内容: '{answer_delta}'")
+                                accumulated_content += answer_delta
+                                print(f"累加内容: '{accumulated_content}'")
                             
-                            if previous_answer:
-                                # 计算增量
-                                if current_answer.startswith(previous_answer):
-                                    delta = current_answer[len(previous_answer):]
-                                    print(f"Delta: '{delta}'")
-                                else:
-                                    print("Delta: [ANSWER_RESET或不连续]")
-                            else:
-                                print(f"Initial Answer: '{current_answer}'")
+                            # 检查是否还有完整答案（应该没有）
+                            answer = data["data"].get("answer", "")
+                            if answer:
+                                print(f"⚠️  警告：仍然返回完整答案: '{answer}'")
                             
-                            previous_answer = current_answer
-                            
-                            # 显示reference信息
                             reference = data["data"].get("reference", {})
                             if reference:
                                 print(f"Reference - Total: {reference.get('total', 0)}")
-                        else:
-                            print(f"Data: {data.get('data')}")
                         
                     except json.JSONDecodeError as e:
                         print(f"JSON解析错误: {e}")
                         print(f"原始数据: {json_str}")
     
-    print(f"\n总共接收到 {chunk_count} 个数据块")
+    print(f"\n=== 测试结果 ===")
+    print(f"总共接收到 {chunk_count} 个数据块")
+    print(f"累加的完整内容: '{accumulated_content}'")
+    print(f"内容长度: {len(accumulated_content)} 字符")
+    
     return True
 
 def main():
-    print("=== 流式接口调试 ===")
+    print("=== 增量流式接口测试 ===")
     
     # 创建测试对话
     chat_id = create_test_chat()
@@ -113,14 +111,14 @@ def main():
     
     print(f"✅ 测试对话创建成功: {chat_id}")
     
-    # 调试流式响应
-    if not debug_streaming_response(chat_id):
-        print("❌ 调试失败")
+    # 测试增量流式响应
+    if not test_incremental_streaming(chat_id):
+        print("❌ 测试失败")
         return 1
     
-    print("\n✅ 调试完成")
+    print("\n✅ 增量流式测试完成")
     return 0
 
 if __name__ == "__main__":
     import sys
-    sys.exit(main())
+    sys.exit(main()) 
