@@ -73,6 +73,10 @@ search_process_recording_*.json
 docs/
 tests/
 
+# Test files (anywhere in the project)
+test_*.py
+test_*
+
 # Credentials and sensitive data
 config/credentials.py
 *_credentials.py
