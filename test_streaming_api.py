@@ -8,7 +8,7 @@ import json
 import time
 import sys
 
-API_BASE_URL = "http://150.109.16.195:8050"
+API_BASE_URL = "http://localhost:8050"
 AUTH_TOKEN = "xDAN-RAG-Service-Demo-Key"
 
 headers = {
