@@ -15,6 +15,13 @@ from datetime import datetime
 try:
     import litellm
     from litellm import completion, acompletion, Router
+    from litellm.exceptions import (
+        AuthenticationError,
+        InvalidRequestError, 
+        RateLimitError,
+        ServiceUnavailableError,
+        OpenAIError
+    )
     SDK_AVAILABLE = True
 except ImportError:
     SDK_AVAILABLE = False
@@ -102,6 +109,12 @@ class LiteLLMSDKClientV2:
             # 设置路由器
             self._setup_router()
             
+            # 设置 Langfuse 集成
+            self._setup_langfuse()
+            
+            # 设置回调函数
+            self._setup_callbacks()
+            
         except Exception as e:
             logger.error(f"LiteLLM配置失败: {e}")
             raise
@@ -157,6 +170,61 @@ class LiteLLMSDKClientV2:
         )
         
         logger.info(f"LiteLLM路由器已配置: {len(model_list)} 个模型")
+    
+    def _setup_langfuse(self):
+        """设置 Langfuse 可观察性集成"""
+        try:
+            langfuse_config = self.config.get('observability.langfuse', {})
+            
+            if not langfuse_config.get('enabled', False):
+                return
+                
+            # 设置 Langfuse 环境变量
+            if langfuse_config.get('public_key'):
+                os.environ['LANGFUSE_PUBLIC_KEY'] = langfuse_config['public_key']
+            if langfuse_config.get('secret_key'):
+                os.environ['LANGFUSE_SECRET_KEY'] = langfuse_config['secret_key']
+            if langfuse_config.get('host'):
+                os.environ['LANGFUSE_HOST'] = langfuse_config['host']
+                
+            # 启用 Langfuse 回调
+            if not hasattr(litellm, 'success_callback'):
+                litellm.success_callback = []
+            if 'langfuse' not in litellm.success_callback:
+                litellm.success_callback.append('langfuse')
+                
+            logger.info(f"Langfuse 集成已启用: {langfuse_config.get('host', 'default')}")
+        except Exception as e:
+            logger.warning(f"Langfuse 集成设置失败: {e}")
+            # 继续运行，不影响核心功能
+    
+    def _setup_callbacks(self):
+        """设置回调函数用于成本追踪等"""
+        # 初始化成本追踪
+        self.total_cost = 0.0
+        
+        # 成本追踪回调
+        def track_cost_callback(kwargs, response, start_time, end_time):
+            """追踪请求成本"""
+            try:
+                if hasattr(response, '_hidden_params') and response._hidden_params.get('response_cost'):
+                    cost = response._hidden_params['response_cost']
+                    self.total_cost += cost
+                    logger.debug(f"请求成本: ${cost:.6f}, 累计: ${self.total_cost:.6f}")
+            except Exception as e:
+                logger.debug(f"成本计算失败: {e}")
+        
+        # 确保 success_callback 是列表
+        if not hasattr(litellm, 'success_callback'):
+            litellm.success_callback = []
+        elif not isinstance(litellm.success_callback, list):
+            litellm.success_callback = [litellm.success_callback]
+            
+        # 添加成本追踪回调
+        if track_cost_callback not in litellm.success_callback:
+            litellm.success_callback.append(track_cost_callback)
+            
+        logger.info("成本追踪回调已设置")
     
     def _build_model_list(self) -> List[Dict]:
         """构建模型列表"""
@@ -316,33 +384,30 @@ class LiteLLMSDKClientV2:
                 completion_params["model"] = model
                 return await acompletion(**completion_params)
                 
+        except AuthenticationError as e:
+            self.error_count += 1
+            logger.error(f"认证失败 (模型: {model}): {e}")
+            raise
+        except RateLimitError as e:
+            self.error_count += 1
+            logger.warning(f"速率限制 (模型: {model}): {e}")
+            raise
+        except InvalidRequestError as e:
+            self.error_count += 1
+            logger.error(f"无效请求 (模型: {model}): {e}")
+            raise
+        except ServiceUnavailableError as e:
+            self.error_count += 1
+            logger.error(f"服务不可用 (模型: {model}): {e}")
+            raise
+        except OpenAIError as e:
+            self.error_count += 1
+            logger.error(f"LiteLLM错误 (模型: {model}): {e}")
+            raise
         except Exception as e:
             self.error_count += 1
-            logger.error(f"聊天完成失败 (模型: {model}): {e}")
-            
-            # 尝试备用模型
-            if model in self.fallback_models:
-                fallback_index = self.fallback_models.index(model) + 1
-            else:
-                fallback_index = 0
-                
-            for fallback_model in self.fallback_models[fallback_index:]:
-                try:
-                    logger.info(f"尝试备用模型: {fallback_model}")
-                    if stream:
-                        # 直接返回异步生成器，不要await
-                        return self._stream_completion(
-                            messages, fallback_model, temperature, max_tokens, **kwargs
-                        )
-                    else:
-                        return await self._completion(
-                            messages, fallback_model, temperature, max_tokens, **kwargs
-                        )
-                except Exception as fallback_error:
-                    logger.warning(f"备用模型 {fallback_model} 也失败: {fallback_error}")
-                    continue
-            
-            raise Exception(f"所有模型都不可用，最后错误: {e}")
+            logger.error(f"未知错误 (模型: {model}): {e}")
+            raise
     
     def _select_model_params(self, model, temperature, max_tokens, use_case):
         """根据使用场景选择模型参数"""
@@ -395,6 +460,8 @@ class LiteLLMSDKClientV2:
             "total_requests": self.request_count,
             "error_count": self.error_count,
             "success_rate": round(success_rate, 2),
+            "total_cost": getattr(self, 'total_cost', 0.0),
+            "average_cost": getattr(self, 'total_cost', 0.0) / max(self.request_count, 1),
             "available_models": self.get_available_models(),
             "model_usage": self.model_usage,
             "configuration": {
@@ -402,7 +469,8 @@ class LiteLLMSDKClientV2:
                 "agent_model": self.agent_model,
                 "generation_model": self.generation_model,
                 "fallback_models": self.fallback_models,
-                "routing_enabled": self.router is not None
+                "routing_enabled": self.router is not None,
+                "langfuse_enabled": 'langfuse' in getattr(litellm, 'success_callback', [])
             }
         }
     

@@ -170,7 +170,7 @@ performance:
 observability:
   # Langfuse配置 - LLM可观察性平台
   langfuse:
-    enabled: true
+    enabled: false
     host: ${LANGFUSE_HOST:https://agentops.xdan.ai}
     public_key: ${LANGFUSE_PUBLIC_KEY:pk-lf-aab86f14-addb-4f26-a755-9ba672359e85}
     secret_key: ${LANGFUSE_SECRET_KEY:sk-lf-dbfde2d7-c80a-456a-8078-279958763214}
