@@ -24,6 +24,21 @@ from .prompt_manager import get_prompt_manager
 logger = logging.getLogger(__name__)
 ds_logger = get_logger(__name__)
 
+def expand_env_vars(value: str) -> str:
+    """展开环境变量，支持 ${VAR:default} 语法"""
+    if not isinstance(value, str):
+        return value
+    
+    # 匹配 ${VAR:default} 模式
+    pattern = r'\$\{([^}:]+):([^}]*)\}'
+    
+    def replace_match(match):
+        var_name = match.group(1)
+        default_value = match.group(2)
+        return os.getenv(var_name, default_value)
+    
+    return re.sub(pattern, replace_match, value)
+
 class DeepSearchFramework:
     """
     DeepSearch框架 - S3架构的在线搜索实现
@@ -91,20 +106,17 @@ Continue until comprehensive information gathered or maximum rounds reached."""
         
         # BrightData配置
         brightdata_config = config.get('external_services', {}).get('brightdata', {})
-        self.brightdata_api_key = (
-            brightdata_config.get('api_key') or 
-            os.getenv('BRIGHTDATA_API_KEY', '7f43b8faf2b1e3ccb9c6982c443d9138edc76fb0384bdc551d9ca2da5576ee4a')
+        self.brightdata_api_key = expand_env_vars(
+            brightdata_config.get('api_key', '${BRIGHTDATA_API_KEY:7f43b8faf2b1e3ccb9c6982c443d9138edc76fb0384bdc551d9ca2da5576ee4a}')
         )
-        self.brightdata_zone = (
-            brightdata_config.get('zone') or 
-            os.getenv('BRIGHTDATA_ZONE', 'xdan_search_searp')
+        self.brightdata_zone = expand_env_vars(
+            brightdata_config.get('zone', '${BRIGHTDATA_ZONE:xdan_search_searp}')
         )
         
         # FireCrawl配置
         firecrawl_config = config.get('external_services', {}).get('firecrawl', {})
-        self.firecrawl_api_key = (
-            firecrawl_config.get('api_key') or 
-            os.getenv('FIRECRAWL_API_KEY', 'fc-87533b34d5834363b71adc2d3870da92')
+        self.firecrawl_api_key = expand_env_vars(
+            firecrawl_config.get('api_key', '${FIRECRAWL_API_KEY:fc-87533b34d5834363b71adc2d3870da92}')
         )
         
         # DeepSearch配置
