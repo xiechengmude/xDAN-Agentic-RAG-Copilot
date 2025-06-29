@@ -203,31 +203,10 @@ observability:
   # Langfuse配置 - LLM可观察性平台
   langfuse:
     enabled: false
-    # host: ${LANGFUSE_HOST:https://agentops.xdan.ai}
-    # public_key: ${LANGFUSE_PUBLIC_KEY:pk-lf-aab86f14-addb-4f26-a755-9ba672359e85}
-    # secret_key: ${LANGFUSE_SECRET_KEY:sk-lf-dbfde2d7-c80a-456a-8078-279958763214}
+    # 保留基础配置以便将来启用
     host: ${LANGFUSE_HOST:http://localhost:3000}
     public_key: ${LANGFUSE_PUBLIC_KEY:pk-lf-a9584006-ab4a-4301-a1a1-691eb6f0377a}
     secret_key: ${LANGFUSE_SECRET_KEY:sk-lf-e3aec777-8820-480f-95aa-37498c76cbe4}
-    # 追踪配置
-    tracing:
-      sample_rate: 1.0  # 100%采样率用于完整可观察性
-      session_tracking: true
-      user_tracking: true
-      
-    # 批处理配置
-    batch:
-      enabled: true
-      size: 10
-      timeout: 10  # 秒
-      
-    # 标签和元数据
-    default_tags:
-      - "s3-framework"
-      - "agentic-rag"
-      - "production"
-    
-    environment: ${ENVIRONMENT:production}
     
   # 传统监控配置
   metrics:
