@@ -12,8 +12,10 @@ from bs4 import BeautifulSoup
 import logging
 import time
 from datetime import datetime
+from ..core.logging_utils import get_logger
 
 logger = logging.getLogger(__name__)
+ds_logger = get_logger(__name__)
 
 
 class BrightDataAsyncClient:
@@ -78,6 +80,12 @@ class BrightDataAsyncClient:
                 search_url = self._build_search_url(query, kwargs)
                 logger.debug(f"搜索URL: {search_url}")
                 
+                ds_logger.log_input("BrightData搜索", {
+                    "query": query,
+                    "search_url": search_url,
+                    "options": kwargs
+                })
+                
                 # 准备请求数据
                 data = {
                     "zone": self.zone,
@@ -107,6 +115,12 @@ class BrightDataAsyncClient:
                     elapsed = time.time() - start_time
                     logger.info(f"搜索完成: {query[:50]}... 耗时: {elapsed:.2f}s, 结果数: {len(results) if isinstance(results, list) else 1}")
                     
+                    ds_logger.log_output("BrightData搜索", {
+                        "query": query,
+                        "results_count": len(results) if isinstance(results, list) else 1,
+                        "elapsed": elapsed
+                    })
+                    
                     return {
                         'success': True,
                         'query': query,
@@ -134,6 +148,7 @@ class BrightDataAsyncClient:
                 }
             except Exception as e:
                 logger.error(f"搜索错误: {query}, 错误: {str(e)}")
+                ds_logger.log_error("BrightData搜索", e, query=query)
                 return {
                     'success': False,
                     'query': query,

@@ -9,6 +9,7 @@ import logging
 import json
 import re
 import asyncio
+import time
 from typing import List, Dict, Any, Optional, Tuple, AsyncGenerator
 from datetime import datetime
 import os
@@ -16,8 +17,10 @@ import os
 # 导入现有的clients
 from ..clients.brightdata_client import BrightDataAsyncClient
 from ..clients.firecrawl_client import FireCrawlAsyncClient
+from .logging_utils import get_logger
 
 logger = logging.getLogger(__name__)
+ds_logger = get_logger(__name__)
 
 class DeepSearchFramework:
     """
@@ -134,6 +137,9 @@ Continue searching until you have enough information for comprehensive analysis,
         Returns:
             SERP搜索结果
         """
+        start_time = time.time()
+        ds_logger.log_phase_start("SERP搜索", query=query, num_results=num_results)
+        
         try:
             await self._ensure_clients()
             
@@ -147,11 +153,18 @@ Continue searching until you have enough information for comprehensive analysis,
                 'country': 'CN'
             }
             
+            ds_logger.log_input("SERP搜索", {"query": query, "options": search_options})
+            ds_logger.log_api_call("BrightData", "POST", "SERP Search", query=query)
+            
             result = await self.brightdata_client.search(query, **search_options)
             
             if result['success']:
                 search_results = result['results']
                 logger.info(f"[BrightData-SERP] ✅ 找到 {len(search_results)} 个结果")
+                
+                ds_logger.log_api_response("BrightData", status_code=200, 
+                                          duration=time.time() - start_time,
+                                          results_count=len(search_results))
                 
                 # 转换为标准格式
                 formatted_results = []
@@ -165,19 +178,38 @@ Continue searching until you have enough information for comprehensive analysis,
                         'date': item.get('date', '')
                     })
                 
-                return {
+                final_result = {
                     "success": True,
                     "results": formatted_results,
                     "query": query,
                     "total_results": len(formatted_results)
                 }
+                
+                ds_logger.log_output("SERP搜索", final_result)
+                ds_logger.log_phase_end("SERP搜索", success=True, 
+                                       duration=time.time() - start_time,
+                                       results_count=len(formatted_results))
+                
+                return final_result
             else:
                 error_msg = result.get('error', 'Unknown error')
                 logger.error(f"[BrightData-SERP] ❌ 搜索失败: {error_msg}")
+                
+                ds_logger.log_api_response("BrightData", status_code=500,
+                                          duration=time.time() - start_time,
+                                          error=error_msg)
+                ds_logger.log_phase_end("SERP搜索", success=False,
+                                       duration=time.time() - start_time,
+                                       error=error_msg)
+                
                 return {"success": False, "error": error_msg}
                         
         except Exception as e:
             logger.error(f"[BrightData-SERP] ❌ 搜索异常: {e}")
+            ds_logger.log_error("SERP搜索", e, query=query)
+            ds_logger.log_phase_end("SERP搜索", success=False,
+                                   duration=time.time() - start_time,
+                                   error=str(e))
             return {"success": False, "error": str(e)}
 
     def format_serp_results(self, serp_results: List[Dict], url_id_start: int = 1) -> Tuple[str, Dict[int, Dict]]:
@@ -322,11 +354,19 @@ Continue searching until you have enough information for comprehensive analysis,
         if not selected_urls:
             return []
         
+        start_time = time.time()
+        ds_logger.log_phase_start("Crawl爬取", urls_count=len(selected_urls))
+        ds_logger.log_input("Crawl爬取", {"urls": selected_urls})
+        
         await self._ensure_clients()
         
         logger.info(f"[FireCrawl] 开始并行爬取 {len(selected_urls)} 个网页")
         
         # 使用FireCrawl client的批量爬取功能
+        ds_logger.log_api_call("FireCrawl", "POST", "Batch Scrape", 
+                              urls_count=len(selected_urls))
+        
+        api_start = time.time()
         crawl_results = await self.firecrawl_client.batch_scrape(
             urls=selected_urls,
             formats=['markdown'],  # 只要markdown格式，提高效率
@@ -335,6 +375,10 @@ Continue searching until you have enough information for comprehensive analysis,
                 'timeout': 30000
             }
         )
+        
+        ds_logger.log_api_response("FireCrawl", status_code=200,
+                                  duration=time.time() - api_start,
+                                  results_count=len(crawl_results))
         
         # 转换结果格式
         crawled_content = []
@@ -358,6 +402,18 @@ Continue searching until you have enough information for comprehensive analysis,
         success_count = sum(1 for item in crawled_content if item.get("success"))
         logger.info(f"[FireCrawl] ✅ 并行爬取完成: {success_count}/{len(selected_urls)} 成功")
         
+        ds_logger.log_output("Crawl爬取", {
+            "total_urls": len(selected_urls),
+            "success_count": success_count,
+            "failed_count": len(selected_urls) - success_count,
+            "total_content_length": sum(item.get('content_length', 0) for item in crawled_content if item.get('success'))
+        })
+        
+        ds_logger.log_phase_end("Crawl爬取", success=True,
+                               duration=time.time() - start_time,
+                               success_count=success_count,
+                               total_count=len(selected_urls))
+        
         return crawled_content
 
     async def extract_important_content_with_task_focus(self, question: str, crawled_content: List[Dict], 
@@ -373,6 +429,11 @@ Continue searching until you have enough information for comprehensive analysis,
         Returns:
             提取的重要内容
         """
+        start_time = time.time()
+        ds_logger.log_phase_start("Extract提取", 
+                                 question=question,
+                                 content_count=len(crawled_content))
+        
         extracted_content = []
         
         for content_item in crawled_content:
@@ -394,6 +455,13 @@ Continue searching until you have enough information for comprehensive analysis,
                     continue
                 
                 logger.info(f"[SearchModelAgent] 分析内容: {url} ({len(full_content)} 字符)")
+                
+                ds_logger.log_input("Extract提取", {
+                    "url": url,
+                    "title": title,
+                    "content_length": len(full_content),
+                    "task_context": task_context
+                })
                 
                 # 构建任务导向的提取提示
                 extract_prompt = f"""你是SearchModelAgent，专门根据任务目标从网页内容中提取最重要的信息部分。
@@ -444,12 +512,21 @@ URL：{url}
                 ]
                 
                 # 使用SearchModel进行内容提取
+                ds_logger.log_llm_call("SearchModel", messages,
+                                      use_case="agent",
+                                      temperature=0.1,
+                                      max_tokens=3000)
+                
+                llm_start = time.time()
                 response = await self.litellm_client.chat_completion(
                     messages=messages,
                     use_case="agent",  # 使用SearchModel
                     temperature=0.1,   # 低温度确保提取准确性
                     max_tokens=3000
                 )
+                
+                ds_logger.log_llm_response("SearchModel", response,
+                                          duration=time.time() - llm_start)
                 
                 extracted_text = response.choices[0].message.content
                 
@@ -467,6 +544,12 @@ URL：{url}
                 logger.info(f"  - 提取长度: {len(extracted_text)} 字符")
                 logger.info(f"  - 压缩比: {len(extracted_text)/len(full_content)*100:.1f}%")
                 
+                ds_logger.log_output("Extract提取", {
+                    "url": url,
+                    "extracted_length": len(extracted_text),
+                    "compression_ratio": len(extracted_text) / len(full_content)
+                })
+                
             except Exception as e:
                 logger.error(f"[SearchModelAgent] ❌ 提取失败 {content_item.get('url', 'Unknown')}: {e}")
                 extracted_content.append({
@@ -478,6 +561,18 @@ URL：{url}
         
         success_count = sum(1 for item in extracted_content if item.get("extraction_success"))
         logger.info(f"[SearchModelAgent] 内容提取完成: {success_count}/{len(extracted_content)} 成功")
+        
+        ds_logger.log_summary("提取统计", {
+            "内容总数": len(crawled_content),
+            "成功提取": success_count,
+            "失败次数": len(extracted_content) - success_count,
+            "平均压缩比": f"{sum(item.get('extraction_ratio', 0) for item in extracted_content if item.get('extraction_success')) / max(success_count, 1) * 100:.1f}%"
+        })
+        
+        ds_logger.log_phase_end("Extract提取", success=True,
+                               duration=time.time() - start_time,
+                               success_count=success_count,
+                               total_count=len(extracted_content))
         
         return extracted_content
 
@@ -516,8 +611,21 @@ URL：{url}
         Returns:
             智能体决策结果
         """
+        start_time = time.time()
+        ds_logger.log_phase_start("Select选择", 
+                                 question=question,
+                                 round=round_num,
+                                 candidates_count=len(search_results))
+        
         try:
             logger.info(f"[SearchModel-Select] 第{round_num}轮：评估{len(search_results)}个候选网页")
+            
+            ds_logger.log_input("Select选择", {
+                "question": question,
+                "round_num": round_num,
+                "search_results_count": len(search_results),
+                "has_previous_knowledge": bool(previous_knowledge)
+            }, "Select输入参数")
             
             # 格式化搜索结果
             formatted_info, url_mapping = self.format_serp_results(search_results)
@@ -561,7 +669,7 @@ URL：{url}
 
 <search_complete>True/False</search_complete>
 
-<next_query>{"query": "下一轮搜索查询"}</next_query>"""
+<next_query>{{\"query\": \"下一轮搜索查询\"}}</next_query>"""
 
             messages = [
                 {"role": "system", "content": "你是SearchModel，专门负责评估和选择最有价值的信息源。你需要根据任务目标，从候选网页中选择质量最高、最相关的Top3进行深度分析。"},
@@ -569,12 +677,21 @@ URL：{url}
             ]
             
             # 使用SearchModel（RAG search模型）进行评估
+            ds_logger.log_llm_call("SearchModel", messages, 
+                                  use_case="agent",
+                                  temperature=0.1,
+                                  max_tokens=2000)
+            
+            llm_start = time.time()
             response = await self.litellm_client.chat_completion(
                 messages=messages,
                 use_case="agent",  # 使用SearchModel
                 temperature=0.1,   # 低温度确保评估准确性
                 max_tokens=2000
             )
+            
+            ds_logger.log_llm_response("SearchModel", response, 
+                                      duration=time.time() - llm_start)
             
             agent_response = response.choices[0].message.content
             logger.info(f"[SearchModel] 评估响应长度：{len(agent_response)}")
@@ -593,16 +710,36 @@ URL：{url}
             
             logger.info(f"[SearchModel] 选择了 {len(decision['important_urls'])} 个URL进行爬取")
             
+            ds_logger.log_output("Select选择", {
+                "selected_urls": decision["important_urls"],
+                "search_complete": decision["search_complete"],
+                "next_query": decision.get("next_query"),
+                "evaluation_reasoning": decision.get("evaluation_reasoning", "")
+            })
+            
+            ds_logger.log_phase_end("Select选择", success=True,
+                                   duration=time.time() - start_time,
+                                   selected_count=len(decision["important_urls"]),
+                                   search_complete=decision["search_complete"])
+            
             return decision
             
         except Exception as e:
             logger.error(f"[SearchModel-Select] 评估失败：{e}")
-            return {
+            ds_logger.log_error("Select选择", e, question=question, round=round_num)
+            
+            fallback_result = {
                 "search_complete": True,
                 "important_urls": list(range(1, min(4, len(search_results) + 1))),
                 "url_mapping": self.format_serp_results(search_results)[1],
                 "error": str(e)
             }
+            
+            ds_logger.log_phase_end("Select选择", success=False,
+                                   duration=time.time() - start_time,
+                                   error=str(e))
+            
+            return fallback_result
 
     def extract_evaluation_reasoning(self, agent_response: str) -> str:
         """提取评估推理过程"""
@@ -624,8 +761,21 @@ URL：{url}
         Returns:
             结构化的深度答案，附带完整引用
         """
+        start_time = time.time()
+        ds_logger.log_phase_start("Synthesize生成",
+                                 question=question,
+                                 sources_count=len(extracted_content),
+                                 stream=stream)
+        
         try:
             logger.info(f"[Gen模型-Synthesize] 基于 {len(extracted_content)} 个来源生成结构化深度答案...")
+            
+            ds_logger.log_input("Synthesize生成", {
+                "question": question,
+                "extracted_content_count": len(extracted_content),
+                "valid_sources": sum(1 for item in extracted_content if item.get("extraction_success")),
+                "stream": stream
+            })
             
             # 分析问题背后的潜在诉求
             question_analysis = await self._analyze_question_intent(question)
@@ -714,6 +864,14 @@ URL：{url}
             ]
             
             # 使用Generation模型（deepseek-chat）生成结构化答案
+            ds_logger.log_llm_call("Gen模型", messages,
+                                  use_case="generation",
+                                  temperature=0.7,
+                                  max_tokens=4000,
+                                  stream=stream)
+            
+            llm_start = time.time()
+            
             if stream:
                 response_stream = await self.litellm_client.chat_completion(
                     messages=messages,
@@ -731,6 +889,19 @@ URL：{url}
                         yield content
                 
                 final_answer = ''.join(answer_parts)
+                
+                ds_logger.log_output("Synthesize生成", {
+                    "answer_length": len(final_answer),
+                    "sources_used": len(valid_sources),
+                    "answer_type": "structured_with_citations",
+                    "stream": True
+                })
+                
+                ds_logger.log_phase_end("Synthesize生成", success=True,
+                                       duration=time.time() - start_time,
+                                       answer_length=len(final_answer),
+                                       sources_count=len(valid_sources))
+                
                 yield {
                     "final_answer": final_answer,
                     "sources": valid_sources,
@@ -745,8 +916,23 @@ URL：{url}
                     max_tokens=4000
                 )
                 
+                ds_logger.log_llm_response("Gen模型", response,
+                                          duration=time.time() - llm_start)
+                
                 final_answer = response.choices[0].message.content
                 logger.info(f"[Gen模型-Synthesize] ✅ 生成结构化答案完成: {len(final_answer)} 字符")
+                
+                ds_logger.log_output("Synthesize生成", {
+                    "answer_length": len(final_answer),
+                    "sources_used": len(valid_sources),
+                    "answer_type": "structured_with_citations",
+                    "stream": False
+                })
+                
+                ds_logger.log_phase_end("Synthesize生成", success=True,
+                                       duration=time.time() - start_time,
+                                       answer_length=len(final_answer),
+                                       sources_count=len(valid_sources))
                 
                 yield {
                     "final_answer": final_answer,
@@ -757,6 +943,10 @@ URL：{url}
                 
         except Exception as e:
             logger.error(f"[Gen模型-Synthesize] ❌ 生成失败：{e}")
+            ds_logger.log_error("Synthesize生成", e, question=question)
+            ds_logger.log_phase_end("Synthesize生成", success=False,
+                                   duration=time.time() - start_time,
+                                   error=str(e))
             yield {"final_answer": f"抱歉，在生成结构化答案时遇到错误：{e}"}
 
     async def _analyze_question_intent(self, question: str) -> str:

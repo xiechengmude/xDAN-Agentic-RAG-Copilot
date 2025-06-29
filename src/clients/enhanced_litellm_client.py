@@ -1,6 +1,6 @@
 """
-增强的LiteLLM客户端，集成Langfuse追踪功能
-提供统一的LLM调用接口，自动处理追踪上下文
+增强的LiteLLM客户端
+提供统一的LLM调用接口
 """
 
 import os
@@ -9,12 +9,12 @@ import litellm
 from litellm import completion, acompletion
 from typing import Dict, Any, Optional, List, Union, AsyncIterator
 import logging
-from src.core.trace_context import TraceContext
+# TraceContext 已移除
 
 logger = logging.getLogger(__name__)
 
 class EnhancedLiteLLMClient:
-    """增强的LiteLLM客户端，集成Langfuse追踪"""
+    """增强的LiteLLM客户端"""
     
     # 模型价格表（每1K tokens的价格，单位：美元）
     MODEL_PRICING = {
@@ -26,34 +26,26 @@ class EnhancedLiteLLMClient:
         "claude-3-sonnet": {"input": 0.003, "output": 0.015}
     }
     
-    def __init__(self, 
-                 langfuse_public_key: Optional[str] = None,
-                 langfuse_secret_key: Optional[str] = None,
-                 langfuse_host: Optional[str] = None):
+    def __init__(self):
         """
         初始化增强的LiteLLM客户端
-        
-        Args:
-            langfuse_public_key: Langfuse公钥
-            langfuse_secret_key: Langfuse私钥
-            langfuse_host: Langfuse服务地址
         """
-        # 设置Langfuse环境变量
-        if langfuse_public_key:
-            os.environ["LANGFUSE_PUBLIC_KEY"] = langfuse_public_key
-        if langfuse_secret_key:
-            os.environ["LANGFUSE_SECRET_KEY"] = langfuse_secret_key
-        if langfuse_host:
-            os.environ["LANGFUSE_HOST"] = langfuse_host
+        # 设置DeepSeek的API配置
+        os.environ["DEEPSEEK_API_KEY"] = "sk-6a32ae2b5dc440558aa628eec3dfda07"
+        os.environ["DEEPSEEK_API_BASE"] = "https://api.deepseek.com/v1"
         
-        # 启用Langfuse回调
-        litellm.success_callback = ["langfuse"]
-        litellm.failure_callback = ["langfuse"]
+        # 设置OpenAI兼容接口配置（用于deepseek-chat）
+        os.environ["OPENAI_API_KEY"] = "sk-6a32ae2b5dc440558aa628eec3dfda07"
+        os.environ["OPENAI_API_BASE"] = "https://api.deepseek.com/v1"
+        
+        # 禁用所有回调
+        litellm.success_callback = []
+        litellm.failure_callback = []
         
         # 设置日志级别
         litellm.set_verbose = False
         
-        logger.info("Enhanced LiteLLM client initialized with Langfuse integration")
+        logger.info("Enhanced LiteLLM client initialized")
     
     def call_with_trace(
         self,
@@ -78,14 +70,12 @@ class EnhancedLiteLLMClient:
         Returns:
             LLM响应
         """
-        # 构建追踪元数据
-        metadata = self._build_trace_metadata(
-            model=model,
-            use_case=use_case,
-            phase=phase,
-            iteration=iteration,
-            **kwargs
-        )
+        # 构建基本元数据
+        metadata = {
+            "use_case": use_case,
+            "phase": phase,
+            "iteration": iteration
+        }
         
         # 记录开始时间
         start_time = time.time()
@@ -99,20 +89,14 @@ class EnhancedLiteLLMClient:
                 **kwargs
             )
             
-            # 更新追踪指标
-            self._update_trace_metrics(
-                response=response,
-                phase=phase,
-                start_time=start_time,
-                model=model
-            )
+            # 记录耗时
+            duration = time.time() - start_time
+            logger.debug(f"{phase} phase completed in {duration:.2f}s")
             
             return response
             
         except Exception as e:
             # 记录错误
-            TraceContext.update_metadata(f"{phase}_error", str(e))
-            TraceContext.update_metadata(f"{phase}_error_type", type(e).__name__)
             logger.error(f"LLM call failed in {phase} phase: {e}")
             raise
     
@@ -141,15 +125,13 @@ class EnhancedLiteLLMClient:
         Returns:
             LLM响应或流式响应生成器
         """
-        # 构建追踪元数据
-        metadata = self._build_trace_metadata(
-            model=model,
-            use_case=use_case,
-            phase=phase,
-            iteration=iteration,
-            stream=stream,
-            **kwargs
-        )
+        # 构建基本元数据
+        metadata = {
+            "use_case": use_case,
+            "phase": phase,
+            "iteration": iteration,
+            "stream": stream
+        }
         
         # 记录开始时间
         start_time = time.time()
@@ -165,192 +147,63 @@ class EnhancedLiteLLMClient:
             )
             
             if stream:
-                # 包装流式响应以收集指标
-                return self._wrap_stream_response(
-                    response=response,
-                    phase=phase,
-                    start_time=start_time,
-                    model=model
-                )
+                # 直接返回流式响应
+                return response
             else:
-                # 更新追踪指标
-                self._update_trace_metrics(
-                    response=response,
-                    phase=phase,
-                    start_time=start_time,
-                    model=model
-                )
+                # 记录耗时
+                duration = time.time() - start_time
+                logger.debug(f"{phase} phase completed in {duration:.2f}s")
                 return response
                 
         except Exception as e:
             # 记录错误
-            TraceContext.update_metadata(f"{phase}_error", str(e))
-            TraceContext.update_metadata(f"{phase}_error_type", type(e).__name__)
             logger.error(f"Async LLM call failed in {phase} phase: {e}")
             raise
     
-    def _build_trace_metadata(
+    
+    
+    
+    
+    
+    async def chat_completion(
         self,
-        model: str,
-        use_case: str,
-        phase: str,
+        messages: List[Dict[str, str]],
+        use_case: str = "generation",
+        phase: str = "default",
         iteration: Optional[int] = None,
         stream: bool = False,
         **kwargs
-    ) -> Dict[str, Any]:
-        """构建追踪元数据"""
+    ) -> Union[Dict[str, Any], AsyncIterator[Dict[str, Any]]]:
+        """
+        兼容性方法：提供chat_completion接口
         
-        # 获取基础Langfuse元数据
-        metadata = TraceContext.to_langfuse_metadata()
-        
-        # 生成generation名称
-        generation_name = f"{phase}_{use_case}"
-        if iteration:
-            generation_name = f"{generation_name}_iter_{iteration}"
-        
-        # 添加generation级别参数
-        metadata.update({
-            "generation_name": generation_name,
-            "version": f"{phase}_v2.0",
+        Args:
+            messages: 消息列表
+            use_case: 使用场景（agent/generation）
+            phase: 当前阶段
+            iteration: 迭代次数
+            stream: 是否流式响应
+            **kwargs: 其他参数，包括model
             
-            # 添加阶段标签
-            "tags": metadata.get("tags", []) + [
-                f"phase:{phase}",
-                f"use_case:{use_case}",
-                f"model:{model}"
-            ]
-        })
+        Returns:
+            LLM响应
+        """
+        # 从kwargs中提取model，如果没有则使用默认值
+        model = kwargs.pop('model', 'deepseek-chat')
         
-        # 添加迭代标签
-        if iteration:
-            metadata["tags"].append(f"iteration:{iteration}")
+        # 修正DeepSeek模型格式 - 使用OpenAI兼容格式
+        if model == 'deepseek-chat':
+            # 使用openai格式，因为DeepSeek API兼容OpenAI
+            model = 'openai/deepseek-chat'
+            kwargs['api_key'] = "sk-6a32ae2b5dc440558aa628eec3dfda07"
+            kwargs['api_base'] = "https://api.deepseek.com/v1"
         
-        # 添加流式标签
-        if stream:
-            metadata["tags"].append("streaming")
-        
-        # 添加自定义元数据
-        metadata["trace_metadata"].update({
-            "llm_config": {
-                "model": model,
-                "temperature": kwargs.get("temperature", 0.7),
-                "max_tokens": kwargs.get("max_tokens"),
-                "top_p": kwargs.get("top_p", 1.0),
-                "stream": stream
-            },
-            "phase_info": {
-                "phase": phase,
-                "use_case": use_case,
-                "iteration": iteration
-            }
-        })
-        
-        return metadata
-    
-    def _update_trace_metrics(
-        self,
-        response: Dict[str, Any],
-        phase: str,
-        start_time: float,
-        model: str
-    ):
-        """更新追踪指标"""
-        
-        duration = time.time() - start_time
-        
-        # 提取token使用量
-        usage = getattr(response, 'usage', None)
-        if usage:
-            total_tokens = usage.total_tokens
-            input_tokens = usage.prompt_tokens
-            output_tokens = usage.completion_tokens
-            
-            # 计算成本
-            cost = self._calculate_cost(
-                model=model,
-                input_tokens=input_tokens,
-                output_tokens=output_tokens
-            )
-            
-            # 更新追踪上下文
-            TraceContext.update_metadata(f"{phase}_duration", duration)
-            TraceContext.update_metadata(f"{phase}_total_tokens", total_tokens)
-            TraceContext.update_metadata(f"{phase}_input_tokens", input_tokens)
-            TraceContext.update_metadata(f"{phase}_output_tokens", output_tokens)
-            TraceContext.update_metadata(f"{phase}_cost", cost)
-            TraceContext.update_metadata(f"{phase}_model", model)
-            
-            # 累加总指标
-            self._accumulate_total_metrics(
-                tokens=total_tokens,
-                cost=cost
-            )
-    
-    async def _wrap_stream_response(
-        self,
-        response: AsyncIterator[Dict[str, Any]],
-        phase: str,
-        start_time: float,
-        model: str
-    ) -> AsyncIterator[Dict[str, Any]]:
-        """包装流式响应以收集指标"""
-        
-        total_content = ""
-        total_tokens = 0
-        
-        async for chunk in response:
-            # 收集内容
-            if hasattr(chunk, 'choices') and chunk.choices:
-                delta = chunk.choices[0].delta
-                if hasattr(delta, 'content') and delta.content:
-                    total_content += delta.content
-            
-            # 传递chunk
-            yield chunk
-        
-        # 流结束后更新指标
-        duration = time.time() - start_time
-        
-        # 估算token数（简单估算：1 token ≈ 4字符）
-        estimated_tokens = len(total_content) // 4
-        
-        # 更新追踪上下文
-        TraceContext.update_metadata(f"{phase}_duration", duration)
-        TraceContext.update_metadata(f"{phase}_estimated_tokens", estimated_tokens)
-        TraceContext.update_metadata(f"{phase}_content_length", len(total_content))
-        TraceContext.update_metadata(f"{phase}_model", model)
-        TraceContext.update_metadata(f"{phase}_stream", True)
-    
-    def _calculate_cost(
-        self,
-        model: str,
-        input_tokens: int,
-        output_tokens: int
-    ) -> float:
-        """计算调用成本"""
-        
-        # 获取模型价格
-        pricing = self.MODEL_PRICING.get(model, {"input": 0.001, "output": 0.001})
-        
-        # 计算成本（价格是每1K tokens）
-        input_cost = (input_tokens / 1000) * pricing["input"]
-        output_cost = (output_tokens / 1000) * pricing["output"]
-        
-        return round(input_cost + output_cost, 6)
-    
-    def _accumulate_total_metrics(self, tokens: int, cost: float):
-        """累加总指标"""
-        
-        context = TraceContext.get_current()
-        metadata = context.get('metadata', {})
-        
-        # 累加tokens
-        current_total_tokens = metadata.get('accumulated_tokens', 0)
-        metadata['accumulated_tokens'] = current_total_tokens + tokens
-        
-        # 累加成本
-        current_total_cost = metadata.get('accumulated_cost', 0.0)
-        metadata['accumulated_cost'] = current_total_cost + cost
-        
-        TraceContext.update_metadata('accumulated_tokens', metadata['accumulated_tokens'])
-        TraceContext.update_metadata('accumulated_cost', metadata['accumulated_cost'])
+        return await self.acall_with_trace(
+            model=model,
+            messages=messages,
+            use_case=use_case,
+            phase=phase,
+            iteration=iteration,
+            stream=stream,
+            **kwargs
+        )

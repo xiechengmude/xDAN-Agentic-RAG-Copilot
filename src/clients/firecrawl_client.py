@@ -11,8 +11,10 @@ import logging
 from pydantic import BaseModel
 from firecrawl import FirecrawlApp, ScrapeOptions, JsonConfig
 import time
+from ..core.logging_utils import get_logger
 
 logger = logging.getLogger(__name__)
+ds_logger = get_logger(__name__)
 
 
 class FireCrawlAsyncClient:
@@ -65,6 +67,12 @@ class FireCrawlAsyncClient:
             try:
                 start_time = time.time()
                 
+                ds_logger.log_input("FireCrawl爬取", {
+                    "url": url,
+                    "formats": formats,
+                    "options": options
+                })
+                
                 # 在线程池中运行同步方法
                 loop = asyncio.get_event_loop()
                 result = await loop.run_in_executor(
@@ -78,6 +86,13 @@ class FireCrawlAsyncClient:
                 elapsed = time.time() - start_time
                 logger.info(f"成功爬取 {url}，耗时 {elapsed:.2f}秒")
                 
+                ds_logger.log_output("FireCrawl爬取", {
+                    "url": url,
+                    "success": True,
+                    "elapsed": elapsed,
+                    "content_length": len(str(result.get('markdown', '')))
+                })
+                
                 return {
                     'success': True,
                     'url': url,
@@ -87,6 +102,7 @@ class FireCrawlAsyncClient:
                 
             except Exception as e:
                 logger.error(f"爬取 {url} 失败: {str(e)}")
+                ds_logger.log_error("FireCrawl爬取", e, url=url)
                 return {
                     'success': False,
                     'url': url,
