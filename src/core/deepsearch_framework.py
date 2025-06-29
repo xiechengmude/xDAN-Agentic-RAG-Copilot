@@ -122,12 +122,17 @@ Continue until comprehensive information gathered or maximum rounds reached."""
             firecrawl_config.get('api_key', '${FIRECRAWL_API_KEY:fc-87533b34d5834363b71adc2d3870da92}')
         )
         
-        # DeepSearch配置
+        # DeepSearch配置 - 动态优化
         deepsearch_config = config.get('deepsearch', {})
         self.max_search_rounds = deepsearch_config.get('max_search_rounds', 5)
         self.max_results_per_round = deepsearch_config.get('max_results_per_round', 10)
         self.max_crawl_urls = deepsearch_config.get('max_crawl_urls', 3)
-        self.max_concurrent_crawls = deepsearch_config.get('max_concurrent_crawls', 3)
+        self.max_concurrent_crawls = deepsearch_config.get('max_concurrent_crawls', 5)  # 提高并发
+        
+        # 性能优化配置
+        self.enable_parallel_processing = deepsearch_config.get('enable_parallel_processing', True)
+        self.crawl_timeout = deepsearch_config.get('crawl_timeout', 20)  # 减少超时时间
+        self.max_content_length = deepsearch_config.get('max_content_length', 15000)  # 内容长度限制
         
         # 初始化clients（稍后在使用时创建）
         self.brightdata_client = None
@@ -213,7 +218,9 @@ Continue until comprehensive information gathered or maximum rounds reached."""
         try:
             await self._ensure_clients()
             
-            logger.info(f"[BrightData-SERP] 搜索查询: {query}")
+            # 查询验证和清理 - 防止格式错误
+            clean_query = self._validate_and_clean_query(query)
+            logger.info(f"[BrightData-SERP] 搜索查询: {clean_query}")
             
             # 使用BrightData client进行搜索
             search_options = {
@@ -223,10 +230,10 @@ Continue until comprehensive information gathered or maximum rounds reached."""
                 'country': 'CN'
             }
             
-            ds_logger.log_input("SERP搜索", {"query": query, "options": search_options})
-            ds_logger.log_api_call("BrightData", "POST", "SERP Search", query=query)
+            ds_logger.log_input("SERP搜索", {"query": clean_query, "options": search_options})
+            ds_logger.log_api_call("BrightData", "POST", "SERP Search", query=clean_query)
             
-            result = await self.brightdata_client.search(query, **search_options)
+            result = await self.brightdata_client.search(clean_query, **search_options)
             
             if result['success']:
                 search_results = result['results']
@@ -317,7 +324,7 @@ Continue until comprehensive information gathered or maximum rounds reached."""
 
     def extract_deepsearch_decision(self, agent_response: str) -> Dict[str, Any]:
         """
-        解析DeepSearch智能体的决策响应
+        解析DeepSearch智能体的决策响应 - 增强版本支持多种格式和智能回退
         
         Args:
             agent_response: 智能体响应文本
@@ -329,7 +336,8 @@ Continue until comprehensive information gathered or maximum rounds reached."""
             "search_complete": False,
             "next_query": None,
             "important_urls": [],
-            "thinking": None
+            "thinking": None,
+            "confidence": 0.5  # 默认置信度
         }
         
         # 提取思考过程
@@ -343,25 +351,81 @@ Continue until comprehensive information gathered or maximum rounds reached."""
             complete_text = complete_match.group(1).strip().lower()
             decision["search_complete"] = complete_text == "true"
         
-        # 提取下一个查询
+        # 提取下一个查询 - 支持多种格式和更好的错误处理
         if not decision["search_complete"]:
-            query_match = re.search(r'<query>(.*?)</query>', agent_response, re.DOTALL)
+            query_extracted = False
+            
+            # 优先尝试 <next_query> 标签（v1.2使用）
+            query_match = re.search(r'<next_query>(.*?)</next_query>', agent_response, re.DOTALL)
+            if not query_match:
+                # 兼容旧版本的 <query> 标签
+                query_match = re.search(r'<query>(.*?)</query>', agent_response, re.DOTALL)
+            
             if query_match:
+                query_content = query_match.group(1).strip()
+                
+                # 尝试解析不同格式
                 try:
-                    query_json = json.loads(query_match.group(1).strip())
-                    decision["next_query"] = query_json.get("query", "")
+                    if query_content.startswith('{') and query_content.endswith('}'):
+                        # JSON格式
+                        query_json = json.loads(query_content)
+                        decision["next_query"] = query_json.get("query", "")
+                    elif query_content.startswith('[') and query_content.endswith(']'):
+                        # 数组格式 - 可能是多个查询
+                        query_list = json.loads(query_content)
+                        decision["next_query"] = query_list[0] if query_list else ""
+                    else:
+                        # 纯文本格式
+                        decision["next_query"] = query_content
+                    query_extracted = True
+                    decision["confidence"] = 0.8
                 except json.JSONDecodeError:
-                    decision["next_query"] = query_match.group(1).strip()
+                    # JSON解析失败，直接使用文本内容
+                    decision["next_query"] = query_content
+                    query_extracted = True
+                    decision["confidence"] = 0.6
+            
+            # 如果没有找到标签，尝试从思考过程中提取查询意图
+            if not query_extracted and decision["thinking"]:
+                thinking_content = decision["thinking"]
+                # 查找查询相关的内容
+                query_patterns = [
+                    r'(?:search|query|搜索).*?["\'"](.*?)["\'""]',
+                    r'need to search for[: ]*(.*?)(?:\.|：|。|\n)',
+                    r'应该搜索[: ]*(.*?)(?:。|\n|，)',
+                    r'下一步.*?搜索[: ]*(.*?)(?:。|\n|，)'
+                ]
+                for pattern in query_patterns:
+                    match = re.search(pattern, thinking_content, re.IGNORECASE)
+                    if match:
+                        decision["next_query"] = match.group(1).strip()
+                        decision["confidence"] = 0.3  # 低置信度
+                        break
         
-        # 提取重要URL ID
-        urls_match = re.search(r'<important_urls>\[(.*?)\]</important_urls>', agent_response)
-        if urls_match:
-            try:
-                url_ids_str = urls_match.group(1).strip()
-                if url_ids_str:
-                    decision["important_urls"] = [int(x.strip()) for x in url_ids_str.split(',')]
-            except (ValueError, AttributeError):
-                pass
+        # 提取重要URL ID - 支持多种格式
+        urls_patterns = [
+            r'<important_urls>\[(.*?)\]</important_urls>',
+            r'<urls>\[(.*?)\]</urls>',
+            r'important.*?urls?.*?[:\[]([0-9,\s]+)[\]]'
+        ]
+        
+        for pattern in urls_patterns:
+            urls_match = re.search(pattern, agent_response, re.IGNORECASE)
+            if urls_match:
+                try:
+                    url_ids_str = urls_match.group(1).strip()
+                    if url_ids_str:
+                        # 处理各种分隔符
+                        url_ids = []
+                        for item in re.split(r'[,，\s]+', url_ids_str):
+                            if item.strip() and item.strip().isdigit():
+                                url_id = int(item.strip())
+                                if url_id > 0:  # 确保是有效的URL ID
+                                    url_ids.append(url_id)
+                        decision["important_urls"] = url_ids
+                        break
+                except (ValueError, AttributeError):
+                    continue
         
         return decision
 
@@ -442,7 +506,7 @@ Continue until comprehensive information gathered or maximum rounds reached."""
             formats=['markdown'],  # 只要markdown格式，提高效率
             options={
                 'only_main_content': True,
-                'timeout': 30000
+                'timeout': self.crawl_timeout * 1000  # 动态超时配置
             }
         )
         
@@ -544,7 +608,7 @@ Continue until comprehensive information gathered or maximum rounds reached."""
                     task_context=task_context if task_context else "这是深度搜索任务，需要全面理解问题背景并提取关键信息",
                     title=title,
                     url=url,
-                    content=full_content[:10000]  # 限制长度避免token超限
+                    content=self._smart_truncate_content(full_content, self.max_content_length)  # 智能内容截断
                 )
 
                 messages = [
@@ -638,7 +702,9 @@ Continue until comprehensive information gathered or maximum rounds reached."""
 
     async def select_phase(self, question: str, search_results: List[Dict], 
                           round_num: int = 1, max_rounds: int = 5, 
-                          previous_knowledge: str = "") -> Dict[str, Any]:
+                          previous_knowledge: str = "",
+                          search_strategy: Dict[str, Any] = None,
+                          search_history: List[Dict] = None) -> Dict[str, Any]:
         """
         DeepSearch的Select阶段：SearchModel通过摘要评估候选网页，按任务目标和质量排序选择Top3
         
@@ -674,32 +740,36 @@ Continue until comprehensive information gathered or maximum rounds reached."""
             # 获取时间上下文
             time_context = self._get_time_context()
             
+            # 格式化搜索策略和历史
+            strategy_text = ""
+            if search_strategy:
+                strategy_text = f"分析：{search_strategy.get('analysis', '')}\n计划：{search_strategy.get('search_plan', '')}"
+            
+            history_text = ""
+            if search_history:
+                history_items = [f"第{h['round']}轮: {h['query']}" for h in search_history]
+                history_text = "\n".join(history_items)
+            
             # 使用Prompt Manager获取评估提示
             evaluation_prompt = self.prompt_manager.get_prompt(
                 "select_evaluation",
                 time_context=time_context,
                 question=question,
+                search_strategy=strategy_text if strategy_text else "（未制定整体策略）",
+                search_history=history_text if history_text else "（第一轮搜索）",
                 previous_knowledge=previous_knowledge if previous_knowledge else "（第一轮搜索，暂无已有知识）",
                 num_results=len(search_results),
                 formatted_info=formatted_info
             )
 
+            # 获取SearchModel系统提示
+            searchmodel_system = self.prompt_manager.get_prompt(
+                "searchmodel_system",
+                time_context=time_context
+            )
+            
             messages = [
-                {"role": "system", "content": """你是SearchModel，专门负责评估和选择最有价值的在线信息源。你具备以下专业能力：
-
-**信息源评估专长：**
-- 识别权威来源：官方网站、学术机构、知名媒体、行业报告
-- 评估内容质量：数据完整性、分析深度、来源可信度
-- 判断时效性：最新数据、历史趋势、时间相关性
-- 分析相关性：直接回答问题 vs 边缘信息
-
-**搜索智能优化：**
-- 理解不同查询类型的信息需求（财务分析、学术研究、市场调研等）
-- 识别高价值关键词和搜索模式
-- 评估搜索结果的覆盖完整性
-- 预测下一轮搜索的最优方向
-
-你的核心任务：从候选网页中选择质量最高、最相关的Top3进行深度分析，确保信息获取的准确性和完整性。"""},
+                {"role": "system", "content": searchmodel_system},
                 {"role": "user", "content": evaluation_prompt}
             ]
             
@@ -730,10 +800,13 @@ Continue until comprehensive information gathered or maximum rounds reached."""
             decision["round"] = round_num
             decision["evaluation_reasoning"] = self.extract_evaluation_reasoning(agent_response)
             
-            # 确保至少选择1个URL
+            # LLM驱动的URL选择 - 完全信任AI决策
             if not decision["important_urls"] and search_results:
-                decision["important_urls"] = [1]  # 默认选择第一个
-                logger.warning("[SearchModel] 未选择URL，默认选择第一个")
+                # 如果LLM没有选择URL，重新强调选择要求
+                logger.warning("[SearchModel] LLM未选择URL，需要强化prompt指导或重新调用")
+                # 紧急fallback：选择前2个作为最小保障
+                decision["important_urls"] = [1, 2] if len(search_results) >= 2 else [1]
+                logger.info(f"[SearchModel] 应急选择URL: {decision['important_urls']} (需要优化prompt)")
             
             logger.info(f"[SearchModel] 选择了 {len(decision['important_urls'])} 个URL进行爬取")
             
@@ -1003,6 +1076,116 @@ Continue until comprehensive information gathered or maximum rounds reached."""
             return "已获取的相关信息：\n" + "\n".join(summary_parts)
         return ""
 
+    async def plan_search_strategy(self, question: str) -> Dict[str, Any]:
+        """
+        使用Agent制定整体搜索策略
+        
+        Args:
+            question: 用户问题
+            
+        Returns:
+            搜索策略字典
+        """
+        try:
+            logger.info("[Agent] 开始制定整体搜索策略")
+            
+            # 获取时间上下文
+            time_context = self._get_time_context()
+            
+            # 获取Agent系统提示
+            agent_system = self.prompt_manager.get_prompt(
+                "agent_system",
+                time_context=time_context
+            )
+            
+            # 构建提示
+            strategy_prompt = f"""请为以下问题制定整体搜索策略：
+
+{time_context}
+
+问题：{question}
+
+请分析问题并制定搜索计划，使用以下格式回答：
+<strategy>
+  <analysis>问题分析和主要挑战</analysis>
+  <search_plan>整体搜索计划（列出2-3个主要步骤）</search_plan>
+  <initial_query>{{"query": "优化的第一轮搜索查询"}}</initial_query>
+  <estimated_rounds>预计需要的搜索轮数</estimated_rounds>
+</strategy>"""
+
+            messages = [
+                {"role": "system", "content": agent_system},
+                {"role": "user", "content": strategy_prompt}
+            ]
+            
+            # 调用模型
+            response = await self.litellm_client.chat_completion(
+                messages=messages,
+                use_case="agent",
+                temperature=0.1,
+                max_tokens=1000
+            )
+            
+            # 解析策略
+            strategy_response = response.choices[0].message.content
+            strategy = self.extract_search_strategy(strategy_response)
+            
+            logger.info(f"[Agent] 策略制定完成，预计需要{strategy.get('estimated_rounds', 3)}轮搜索")
+            return strategy
+            
+        except Exception as e:
+            logger.error(f"[Agent] 策略制定失败：{e}")
+            # 返回默认策略
+            return {
+                "analysis": "自动分析失败，使用默认策略",
+                "search_plan": "直接搜索用户问题",
+                "initial_query": question,
+                "estimated_rounds": 3
+            }
+    
+    def extract_search_strategy(self, agent_response: str) -> Dict[str, Any]:
+        """
+        从Agent响应中提取搜索策略
+        
+        Args:
+            agent_response: Agent的响应文本
+            
+        Returns:
+            策略字典
+        """
+        strategy = {
+            "analysis": "",
+            "search_plan": "",
+            "initial_query": "",
+            "estimated_rounds": 3
+        }
+        
+        # 提取分析
+        analysis_match = re.search(r'<analysis>(.*?)</analysis>', agent_response, re.DOTALL)
+        if analysis_match:
+            strategy["analysis"] = analysis_match.group(1).strip()
+        
+        # 提取搜索计划
+        plan_match = re.search(r'<search_plan>(.*?)</search_plan>', agent_response, re.DOTALL)
+        if plan_match:
+            strategy["search_plan"] = plan_match.group(1).strip()
+        
+        # 提取初始查询
+        query_match = re.search(r'<initial_query>(.*?)</initial_query>', agent_response, re.DOTALL)
+        if query_match:
+            try:
+                query_json = json.loads(query_match.group(1).strip())
+                strategy["initial_query"] = query_json.get("query", "")
+            except json.JSONDecodeError:
+                strategy["initial_query"] = query_match.group(1).strip()
+        
+        # 提取预计轮数
+        rounds_match = re.search(r'<estimated_rounds>(\d+)</estimated_rounds>', agent_response)
+        if rounds_match:
+            strategy["estimated_rounds"] = int(rounds_match.group(1))
+        
+        return strategy
+
     async def execute_deepsearch_workflow(self, question: str, max_rounds: int = 5, 
                                         num_results: int = 10, stream: bool = False):
         """
@@ -1028,34 +1211,79 @@ Continue until comprehensive information gathered or maximum rounds reached."""
         
         try:
             logger.info(f"开始DeepSearch工作流：{question[:50]}...")
+            
+            # 新增：Agent制定整体搜索策略
+            search_strategy = await self.plan_search_strategy(question)
+            workflow_result["search_strategy"] = search_strategy
+            
             all_extracted_content = []
+            search_history = []  # 记录搜索历史
             
             for round_num in range(1, max_rounds + 1):
                 logger.info(f"=== DeepSearch工作流第{round_num}轮 ===")
                 
                 # 1. Search阶段：SERP搜索
                 if round_num == 1:
-                    search_query = question
+                    # 使用Agent策略的初始查询
+                    search_query = search_strategy.get("initial_query", question)
+                    logger.info(f"[Agent] 使用策略查询: {search_query}")
                 else:
-                    last_decision = workflow_result["rounds"][-1]["decision"]
-                    search_query = last_decision.get("next_query", question)
+                    # 安全地获取上一轮的决策
+                    if workflow_result["rounds"]:
+                        last_decision = workflow_result["rounds"][-1]["decision"]
+                        search_query = last_decision.get("next_query", question)
+                    else:
+                        search_query = question
+                
+                # 记录搜索历史
+                search_history.append({
+                    "round": round_num,
+                    "query": search_query
+                })
                 
                 search_results, search_success = await self.search_phase(search_query, num_results)
                 
                 if not search_success:
-                    logger.error("搜索失败，尝试继续...")
-                    continue
+                    logger.error(f"第{round_num}轮搜索失败: {search_query}")
+                    # 记录失败的轮次
+                    round_result = {
+                        "round": round_num,
+                        "search_query": search_query,
+                        "search_results_count": 0,
+                        "selected_urls": [],
+                        "extracted_content_count": 0,
+                        "decision": {"search_complete": False, "error": "Search failed"},
+                        "timestamp": datetime.now().isoformat(),
+                        "error": "Search phase failed"
+                    }
+                    workflow_result["rounds"].append(round_result)
+                    
+                    # 如果是第一轮就失败了，至少尝试下一轮
+                    if round_num < max_rounds:
+                        continue
+                    else:
+                        break
                 
                 # 2. Select阶段：智能体评估
                 previous_knowledge = self._build_previous_knowledge_summary(all_extracted_content)
-                decision = await self.select_phase(question, search_results, round_num, max_rounds, previous_knowledge)
+                decision = await self.select_phase(
+                    question, search_results, round_num, max_rounds, 
+                    previous_knowledge,
+                    search_strategy=search_strategy,
+                    search_history=search_history
+                )
                 
                 # 3. Crawl阶段：爬取选定网页
                 important_url_ids = decision.get("important_urls", [])
                 url_mapping = decision.get("url_mapping", {})
                 
+                # 应用每轮最大爬取URL数限制
+                limited_url_ids = important_url_ids[:self.max_crawl_urls]
+                if len(important_url_ids) > self.max_crawl_urls:
+                    logger.info(f"[限制] 本轮选择了{len(important_url_ids)}个URL，限制为{self.max_crawl_urls}个")
+                
                 selected_urls = []
-                for url_id in important_url_ids:
+                for url_id in limited_url_ids:
                     if url_id in url_mapping:
                         selected_urls.append(url_mapping[url_id].get("link", ""))
                 
@@ -1090,8 +1318,11 @@ Continue until comprehensive information gathered or maximum rounds reached."""
                 else:
                     logger.info(f"智能体判断需要更多信息，继续搜索...")
                     if not decision.get("next_query"):
-                        logger.warning("智能体未提供下一个搜索查询，使用原问题")
-                        decision["next_query"] = question
+                        # LLM应该自主生成查询，如果没有则说明prompt需要优化
+                        logger.warning("[SearchModel] LLM未生成next_query，需要强化prompt指导")
+                        # 最后的fallback：基于问题生成简单变体
+                        decision["next_query"] = f"{question} 详细信息 最新数据"
+                        logger.info(f"[应急策略] 使用基础查询变体: {decision['next_query']}")
             
             # 5. Synthesize阶段：生成最终答案
             workflow_result["extracted_content"] = all_extracted_content
@@ -1133,3 +1364,124 @@ Continue until comprehensive information gathered or maximum rounds reached."""
         finally:
             # 清理clients
             await self._cleanup_clients()
+    
+    
+    def _validate_and_clean_query(self, query: Any) -> str:
+        """
+        验证和清理搜索查询 - 防止格式错误和API调用失败
+        
+        Args:
+            query: 原始查询（可能是字符串、列表或其他格式）
+            
+        Returns:
+            清理后的查询字符串
+        """
+        # 处理列表格式查询
+        if isinstance(query, list):
+            if query:
+                # 取第一个查询，或者合并多个查询
+                if len(query) == 1:
+                    clean_query = str(query[0])
+                else:
+                    # 合并多个查询，用OR连接
+                    clean_query = " OR ".join(str(q) for q in query[:3])  # 最多取前3个
+            else:
+                clean_query = ""
+        elif isinstance(query, dict):
+            # 处理字典格式
+            clean_query = query.get('query', str(query))
+        else:
+            # 转换为字符串
+            clean_query = str(query) if query else ""
+        
+        # 基本清理
+        clean_query = clean_query.strip()
+        
+        # 长度限制 - 避免过长查询
+        if len(clean_query) > 200:
+            clean_query = clean_query[:200].rsplit(' ', 1)[0]  # 在词边界截断
+        
+        # 移除可能导致问题的字符
+        import urllib.parse
+        # 基本特殊字符清理，但保留搜索操作符
+        unsafe_chars = ['<', '>', '{', '}', '[', ']', '|', '\\', '^', '~', '`']
+        for char in unsafe_chars:
+            clean_query = clean_query.replace(char, '')
+        
+        # 如果清理后为空，使用默认查询
+        if not clean_query or len(clean_query.strip()) < 2:
+            clean_query = "search information"
+        
+        return clean_query
+    
+    def _smart_truncate_content(self, content: str, max_length: int) -> str:
+        """
+        智能内容截断 - 保留最重要的内容部分
+        
+        Args:
+            content: 原始内容
+            max_length: 最大长度
+            
+        Returns:
+            截断后的内容
+        """
+        if len(content) <= max_length:
+            return content
+            
+        # 查找重要的内容标记
+        important_sections = []
+        
+        # 1. 提取标题、表格、列表等结构化内容
+        section_patterns = [
+            r'#+\s+.*?(?=\n)',  # Markdown标题
+            r'\|.*?\|.*?(?=\n)',  # 表格行
+            r'^\s*[-*+]\s+.*?(?=\n)',  # 列表项
+            r'^\s*\d+\.\s+.*?(?=\n)',  # 编号列表
+            r'```[\s\S]*?```',  # 代码块
+            r'\*\*.*?\*\*',  # 粗体文本
+        ]
+        
+        for pattern in section_patterns:
+            matches = re.finditer(pattern, content, re.MULTILINE)
+            for match in matches:
+                important_sections.append((match.start(), match.end(), match.group()))
+        
+        # 2. 如果有重要部分，优先保留这些
+        if important_sections:
+            # 按位置排序
+            important_sections.sort()
+            
+            # 计算可以包含的重要内容
+            result_parts = []
+            current_length = 0
+            
+            for start, end, text in important_sections:
+                if current_length + len(text) <= max_length * 0.8:  # 预留20%空间
+                    result_parts.append(text)
+                    current_length += len(text)
+                else:
+                    break
+            
+            if result_parts:
+                # 补充上下文
+                remaining_length = max_length - current_length
+                if remaining_length > 100:
+                    # 添加开头部分作为上下文
+                    intro_text = content[:min(remaining_length // 2, 500)]
+                    result_parts.insert(0, intro_text)
+                
+                return '\n'.join(result_parts)
+        
+        # 3. 如果没有明显的重要部分，采用混合策略
+        # 保留开头和中间部分
+        part1_length = min(max_length // 2, 3000)
+        part2_start = max(part1_length, len(content) // 2)
+        part2_length = max_length - part1_length
+        
+        part1 = content[:part1_length]
+        part2 = content[part2_start:part2_start + part2_length] if part2_start < len(content) else ""
+        
+        if part2:
+            return part1 + "\n\n...[中间内容已省略]...\n\n" + part2
+        else:
+            return part1

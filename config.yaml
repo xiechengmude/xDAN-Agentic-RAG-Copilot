@@ -185,9 +185,9 @@ external_services:
 # ==================== DeepSearch配置 ====================
 deepsearch:
   # 搜索配置
-  max_search_rounds: 5
-  max_results_per_round: 10
-  max_crawl_urls: 3
+  max_search_rounds: 5              # 最大搜索轮数（全局限制）
+  max_results_per_round: 10         # 每轮搜索返回的结果数
+  max_crawl_urls: 5                 # 每轮最多爬取的URL数（非全局总数）
   
   # 质量控制
   min_content_length: 500

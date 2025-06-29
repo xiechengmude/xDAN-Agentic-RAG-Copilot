@@ -93,8 +93,8 @@ class BrightDataAsyncClient:
                     "format": kwargs.get("format", "raw")
                 }
                 
-                # 确保session存在
-                if not self.session:
+                # 确保session存在且未关闭
+                if not self.session or self.session.closed:
                     self.session = aiohttp.ClientSession(timeout=self.timeout)
                 
                 # 发送异步请求
