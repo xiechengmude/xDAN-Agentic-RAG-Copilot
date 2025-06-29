@@ -18,6 +18,7 @@ import os
 from ..clients.brightdata_client import BrightDataAsyncClient
 from ..clients.firecrawl_client import FireCrawlAsyncClient
 from .logging_utils import get_logger
+from .time_aware_prompt import TimeAwarePrompt
 
 logger = logging.getLogger(__name__)
 ds_logger = get_logger(__name__)
@@ -95,9 +96,13 @@ Continue searching until you have enough information for comprehensive analysis,
         self.brightdata_client = None
         self.firecrawl_client = None
         
+        # 初始化时间感知提示
+        self.time_aware = TimeAwarePrompt()
+        
         logger.info("DeepSearch框架初始化完成 - 复用现有clients")
         logger.info(f"- BrightData SERP: zone={self.brightdata_zone}")
         logger.info(f"- FireCrawl: key=...{self.firecrawl_api_key[-8:]}")
+        logger.info("- 时间感知提示已启用")
         logger.info(f"- 最大搜索轮数: {self.max_search_rounds}")
         logger.info(f"- 每轮最大结果: {self.max_results_per_round}")
         logger.info(f"- 最大爬取URL数: {self.max_crawl_urls}")
@@ -125,6 +130,26 @@ Continue searching until you have enough information for comprehensive analysis,
             await self.brightdata_client.__aexit__(None, None, None)
         if self.firecrawl_client:
             await self.firecrawl_client.__aexit__(None, None, None)
+    
+    def _get_time_context(self) -> str:
+        """获取时间上下文信息用于增强提示"""
+        # 刷新时间信息
+        self.time_aware = TimeAwarePrompt()
+        time_info = self.time_aware.get_current_time_info()
+        
+        return f"""
+当前时间上下文：
+- 北京时间：{time_info['beijing_time']} ({time_info['weekday_cn']})
+- 本周范围：{time_info['week_start']} 至 {time_info['week_end']}
+- 本月范围：{time_info['month_start']} 至 {time_info['month_end']}
+- 市场状态：{time_info['market_status']}
+
+请在分析和回答时考虑当前时间，特别是：
+1. 评估信息的时效性和相关性
+2. 对于财务、市场或新闻相关查询，考虑时间敏感性
+3. 对于历史事件，明确时间关系
+4. 对于预测或趋势分析，基于当前时间点进行推理
+"""
 
     async def serp_search(self, query: str, num_results: int = 10) -> Dict[str, Any]:
         """
@@ -463,8 +488,13 @@ Continue searching until you have enough information for comprehensive analysis,
                     "task_context": task_context
                 })
                 
+                # 获取时间上下文
+                time_context = self._get_time_context()
+                
                 # 构建任务导向的提取提示
                 extract_prompt = f"""你是SearchModelAgent，专门根据任务目标从网页内容中提取最重要的信息部分。
+
+{time_context}
 
 **任务目标分析：**
 问题：{question}
@@ -630,8 +660,13 @@ URL：{url}
             # 格式化搜索结果
             formatted_info, url_mapping = self.format_serp_results(search_results)
             
+            # 获取时间上下文
+            time_context = self._get_time_context()
+            
             # 构建SearchModel评估提示
             evaluation_prompt = f"""你是一个专业的信息评估专家，需要从候选网页中选择最有价值的Top3进行深度爬取。
+
+{time_context}
 
 **任务目标分析：**
 问题：{question}
@@ -647,7 +682,7 @@ URL：{url}
 2. 信息的权威性和可信度
 3. 内容的深度和完整性
 4. 能否填补知识缺口
-5. 信息的时效性
+5. 信息的时效性（重要：考虑当前时间）
 
 **要求：**
 - 分析每个候选网页的价值
@@ -655,6 +690,7 @@ URL：{url}
 - 选择Top3最有价值的网页
 - 说明选择理由
 - 判断是否需要继续搜索
+- 特别注意信息的时效性，优先选择最新和最相关的内容
 
 请使用以下格式回答：
 <thinking>
@@ -780,6 +816,9 @@ URL：{url}
             # 分析问题背后的潜在诉求
             question_analysis = await self._analyze_question_intent(question)
             
+            # 获取时间上下文
+            time_context = self._get_time_context()
+            
             # 构建带编号的信息来源
             sources_info = []
             valid_sources = []
@@ -808,7 +847,9 @@ URL：{url}
             citation_context = "\n\n".join(sources_info)
             
             # 构建Gen模型的结构化生成提示
-            system_prompt = """你是一个顶级的信息整合和分析专家。你需要根据用户问题的潜在诉求，将多个来源的信息进行结构化整理，并提供完整、准确的引用。
+            system_prompt = f"""你是一个顶级的信息整合和分析专家。你需要根据用户问题的潜在诉求，将多个来源的信息进行结构化整理，并提供完整、准确的引用。
+
+{time_context}
 
 核心要求：
 1. **深度理解问题诉求**：分析问题背后的真实需求和目标
@@ -816,6 +857,7 @@ URL：{url}
 3. **多维度分析**：从不同角度提供全面分析
 4. **精确引用**：每个关键信息都要标注来源【来源X】
 5. **实用性导向**：提供可操作的结论和建议
+6. **时间意识**：在分析和回答中充分考虑当前时间背景
 
 输出格式要求：
 ## 问题核心分析
@@ -952,7 +994,12 @@ URL：{url}
     async def _analyze_question_intent(self, question: str) -> str:
         """分析问题背后的潜在诉求"""
         try:
+            # 获取时间上下文
+            time_context = self._get_time_context()
+            
             intent_prompt = f"""请分析以下问题背后的潜在诉求和真实需求：
+
+{time_context}
 
 问题：{question}
 
@@ -961,6 +1008,7 @@ URL：{url}
 2. 他们希望解决什么问题？
 3. 需要什么类型的信息（事实、分析、建议等）？
 4. 答案的应用场景可能是什么？
+5. 时间敏感性（是否需要最新信息）？
 
 请简洁地总结问题的潜在诉求（100字以内）："""
 
