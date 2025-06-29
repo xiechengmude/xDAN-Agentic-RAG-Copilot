@@ -91,13 +91,16 @@ OUTPUT TAGS:
 
 Continue until comprehensive information gathered or maximum rounds reached."""
 
-    def __init__(self, litellm_client, config: Dict[str, Any] = None):
+    def __init__(self, litellm_client, config: Dict[str, Any] = None, 
+                 prompt_version: str = "v1.1", enable_time_aware: bool = True):
         """
         初始化DeepSearch框架 - 复用现有clients，遵循KISS和DRY原则
         
         Args:
             litellm_client: LiteLLM客户端（RAG search模型 + deepseek生成）
             config: 配置字典，包含BrightData和FireCrawl的配置
+            prompt_version: 提示词版本 (v1.0, v1.1)
+            enable_time_aware: 是否启用时间感知功能
         """
         self.litellm_client = litellm_client
         
@@ -131,16 +134,18 @@ Continue until comprehensive information gathered or maximum rounds reached."""
         self.firecrawl_client = None
         
         # 初始化时间感知提示
-        self.time_aware = TimeAwarePrompt()
+        self.enable_time_aware = enable_time_aware
+        self.time_aware = TimeAwarePrompt() if enable_time_aware else None
         
-        # 初始化提示词管理器（默认使用v1.1优化版本）
-        self.prompt_manager = get_prompt_manager("v1.1")
+        # 初始化提示词管理器
+        self.prompt_version = prompt_version
+        self.prompt_manager = get_prompt_manager(prompt_version)
         
         logger.info("DeepSearch框架初始化完成 - 复用现有clients")
         logger.info(f"- BrightData SERP: zone={self.brightdata_zone}")
         logger.info(f"- FireCrawl: key=...{self.firecrawl_api_key[-8:]}")
-        logger.info("- 时间感知提示已启用")
-        logger.info(f"- 提示词管理器已启用，版本: {self.prompt_manager.get_current_version()}")
+        logger.info(f"- 时间感知提示: {'已启用' if enable_time_aware else '已禁用'}")
+        logger.info(f"- 提示词管理器已启用，版本: {prompt_version}")
         logger.info(f"- 最大搜索轮数: {self.max_search_rounds}")
         logger.info(f"- 每轮最大结果: {self.max_results_per_round}")
         logger.info(f"- 最大爬取URL数: {self.max_crawl_urls}")
@@ -171,8 +176,10 @@ Continue until comprehensive information gathered or maximum rounds reached."""
     
     def _get_time_context(self) -> str:
         """获取时间上下文信息用于增强提示"""
+        if not self.enable_time_aware or not self.time_aware:
+            return ""
+        
         # 刷新时间信息
-        self.time_aware = TimeAwarePrompt()
         time_info = self.time_aware.get_current_time_info()
         
         return f"""
