@@ -1,0 +1,54 @@
+{
+  "test_summary": {
+    "test_question": "苹果公司2024年第三季度财报表现如何？包括营收、利润和主要产品线的增长情况。",
+    "total_configs": 3,
+    "successful_configs": 3,
+    "test_timestamp": "2025-06-29T13:27:42.677970"
+  },
+  "optimization_analysis": {
+    "v1.0_baseline": "基础prompt版本",
+    "v1.1_search_optimized": "增强搜索策略和信息源评估",
+    "time_aware_enhancement": "加入当前时间上下文信息"
+  },
+  "detailed_results": [
+    {
+      "config_name": "v1.0基础版",
+      "version": "v1.0",
+      "time_aware": false,
+      "question": "苹果公司2024年第三季度财报表现如何？包括营收、利润和主要产品线的增长情况。",
+      "answer_length": 1406,
+      "sources_count": 3,
+      "elapsed_time": 127.91085696220398,
+      "round_count": 1,
+      "timestamp": "2025-06-29T13:21:52.135346",
+      "success": true,
+      "answer_preview": "## 问题核心分析\n用户需要苹果公司2024年第三季度（自然年对应Q2）财报的全面解读，核心关注点在于：\n1. 整体财务健康度（营收/利润增长率）\n2. 产品线结构变化（iPhone/Mac等硬件与服务的贡献）\n3. 区域市场表现差异\n4. 未来增长动能（特别是AI技术布局）\n深层诉求是通过财务数据透视苹果的战略执行效果和市场竞争地位，为投资决策或商业分析提供依据【来源1】【来源2】\n\n## 关键..."
+    },
+    {
+      "config_name": "v1.1搜索优化版",
+      "version": "v1.1",
+      "time_aware": false,
+      "question": "苹果公司2024年第三季度财报表现如何？包括营收、利润和主要产品线的增长情况。",
+      "answer_length": 1322,
+      "sources_count": 2,
+      "elapsed_time": 179.8939561843872,
+      "round_count": 1,
+      "timestamp": "2025-06-29T13:24:57.034298",
+      "success": true,
+      "answer_preview": "## 问题核心分析\n用户需要评估苹果公司2024年第三季度（自然年Q3，对应苹果2024财年Q4）的财务表现和业务健康状况。核心诉求包括：\n1. 投资价值评估：通过营收利润等关键指标判断公司成长性\n2. 产品线竞争力分析：了解各业务板块的市场表现\n3. 区域市场动态：特别是大中华区的特殊表现\n4. 行业地位验证：对比科技巨头同期表现\n\n## 关键发现\n1. **时间范围确认**：苹果2024自然年..."
+    },
+    {
+      "config_name": "v1.1+时间感知版",
+      "version": "v1.1",
+      "time_aware": true,
+      "question": "苹果公司2024年第三季度财报表现如何？包括营收、利润和主要产品线的增长情况。",
+      "answer_length": 1794,
+      "sources_count": 2,
+      "elapsed_time": 155.63104009628296,
+      "round_count": 1,
+      "timestamp": "2025-06-29T13:27:37.671373",
+      "success": true,
+      "answer_preview": "## 问题核心分析\n用户需要获取苹果公司2024年第三季度（自然季度4-6月）的详细财务表现，核心诉求是通过营收、利润和产品线数据评估：\n1. 在消费电子行业疲软周期中的抗风险能力\n2. AI战略（Apple Intelligence）对业务的实际影响\n3. 股东回报政策的持续性\n4. 与主要竞争对手（如三星、华为）的对比基准数据\n\n当前时间（2025年6月末）使该查询具有历史复盘性质，可能用于验..."
+    }
+  ]
+}

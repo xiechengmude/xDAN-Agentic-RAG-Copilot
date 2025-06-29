@@ -92,7 +92,7 @@ OUTPUT TAGS:
 Continue until comprehensive information gathered or maximum rounds reached."""
 
     def __init__(self, litellm_client, config: Dict[str, Any] = None, 
-                 prompt_version: str = "v1.1", enable_time_aware: bool = True):
+                 prompt_version: str = "v1.2.1", enable_time_aware: bool = True):
         """
         初始化DeepSearch框架 - 复用现有clients，遵循KISS和DRY原则
         
@@ -611,13 +611,20 @@ Continue until comprehensive information gathered or maximum rounds reached."""
                     content=self._smart_truncate_content(full_content, self.max_content_length)  # 智能内容截断
                 )
 
+                # 获取统一Agent系统提示用于内容提取
+                # 使用轻量版本作为默认实现
+                unified_agent_system = self.prompt_manager.get_prompt(
+                    "unified_agent_lite",
+                    time_context=time_context
+                )
+                
                 messages = [
-                    {"role": "system", "content": "你是SearchModelAgent，专门负责根据任务目标精准提取网页中最有价值的信息部分。你需要深度理解任务需求，提取最相关、最权威、最有用的内容。"},
+                    {"role": "system", "content": unified_agent_system},
                     {"role": "user", "content": extract_prompt}
                 ]
                 
-                # 使用SearchModel进行内容提取
-                ds_logger.log_llm_call("SearchModel", messages,
+                # 使用统一Agent进行内容提取
+                ds_logger.log_llm_call("UnifiedAgent", messages,
                                       use_case="agent",
                                       temperature=0.1,
                                       max_tokens=3000)
@@ -625,12 +632,12 @@ Continue until comprehensive information gathered or maximum rounds reached."""
                 llm_start = time.time()
                 response = await self.litellm_client.chat_completion(
                     messages=messages,
-                    use_case="agent",  # 使用SearchModel
+                    use_case="agent",  # 使用统一Agent
                     temperature=0.1,   # 低温度确保提取准确性
                     max_tokens=3000
                 )
                 
-                ds_logger.log_llm_response("SearchModel", response,
+                ds_logger.log_llm_response("UnifiedAgent", response,
                                           duration=time.time() - llm_start)
                 
                 extracted_text = response.choices[0].message.content
@@ -644,7 +651,7 @@ Continue until comprehensive information gathered or maximum rounds reached."""
                     "extraction_ratio": len(extracted_text) / len(full_content) if full_content else 0
                 })
                 
-                logger.info(f"[SearchModelAgent] ✅ 提取完成: {url}")
+                logger.info(f"[UnifiedAgent] ✅ 提取完成: {url}")
                 logger.info(f"  - 原始长度: {len(full_content)} 字符")
                 logger.info(f"  - 提取长度: {len(extracted_text)} 字符")
                 logger.info(f"  - 压缩比: {len(extracted_text)/len(full_content)*100:.1f}%")
@@ -656,7 +663,7 @@ Continue until comprehensive information gathered or maximum rounds reached."""
                 })
                 
             except Exception as e:
-                logger.error(f"[SearchModelAgent] ❌ 提取失败 {content_item.get('url', 'Unknown')}: {e}")
+                logger.error(f"[UnifiedAgent] ❌ 提取失败 {content_item.get('url', 'Unknown')}: {e}")
                 extracted_content.append({
                     "url": content_item.get("url", "Unknown"),
                     "title": content_item.get("title", ""),
@@ -665,7 +672,7 @@ Continue until comprehensive information gathered or maximum rounds reached."""
                 })
         
         success_count = sum(1 for item in extracted_content if item.get("extraction_success"))
-        logger.info(f"[SearchModelAgent] 内容提取完成: {success_count}/{len(extracted_content)} 成功")
+        logger.info(f"[UnifiedAgent] 内容提取完成: {success_count}/{len(extracted_content)} 成功")
         
         ds_logger.log_summary("提取统计", {
             "内容总数": len(crawled_content),

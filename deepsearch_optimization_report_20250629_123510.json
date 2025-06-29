@@ -1,0 +1,132 @@
+{
+  "test_summary": {
+    "total_tests": 10,
+    "successful_tests": 0,
+    "failed_tests": 10,
+    "success_rate": "0.0%",
+    "average_time": "0.00s",
+    "average_answer_length": "0 chars",
+    "average_sources": "0.0 sources"
+  },
+  "category_breakdown": {
+    "数据分析能力：基于财报的因子计算": {
+      "total": 1,
+      "success": 0
+    },
+    "文献分析能力：多话题科研综述": {
+      "total": 4,
+      "success": 0
+    },
+    "市场研究能力：产品与行业分析": {
+      "total": 2,
+      "success": 0
+    },
+    "编程能力：智慧城市设计": {
+      "total": 1,
+      "success": 0
+    },
+    "在线检索能力：小众内容定位": {
+      "total": 2,
+      "success": 0
+    }
+  },
+  "detailed_results": [
+    {
+      "question_id": "data_analysis_1745567367_24",
+      "category": "数据分析能力：基于财报的因子计算",
+      "question": "作为财务分析师，请分析Facebook在近2年的毛利率表现，重点计算未来两个季度的预测值。请同时与行业内Top 3竞争对手的数据进行对比分析。",
+      "error": "'DeepSearchFramework' object has no attribute 'deep_search'",
+      "elapsed_time": 9.5367431640625e-07,
+      "timestamp": "2025-06-29T12:34:25.018583",
+      "success": false
+    },
+    {
+      "question_id": "literature_review_1745567367_41",
+      "category": "文献分析能力：多话题科研综述",
+      "question": "你是研究'透明与信任的关系'领域的计算机科学学者，请根据以下分段要求完成一篇综合文献综述：第一部分：元分析。检索近20年发表的元分析和系统性综述文献，总结该领域的研究共识和争议，使用森林图展示关键发现，字数不超过600字，采用Vancouver引用格式。第二部分：方法论创新。检索近5年发表的方法论创新文献，重点分析新兴研究方法（如大数据分析、混合研究方法等）在该领域的应用，字数不少于1000字，采用APA引用格式。第三部分：跨文化视角。检索SSCI和A&HCI数据库中的跨文化比较研究，分析文化因素对研究结果的调节作用，需包含至少一个理论模型图，字数控制在1200字以内，采用哈佛引用格式。",
+      "error": "'DeepSearchFramework' object has no attribute 'deep_search'",
+      "elapsed_time": 3.314018249511719e-05,
+      "timestamp": "2025-06-29T12:34:30.020879",
+      "success": false
+    },
+    {
+      "question_id": "market_research_1745567367_32",
+      "category": "市场研究能力：产品与行业分析",
+      "question": "作为消费者洞察专家，请对电子商务行业的家用空气净化系统进行全面的市场调研，以确定最佳的市场进入时机和方式。包括市场规模、增长趋势、主要竞争对手分析、目标客户画像、SWOT分析、市场进入策略和销售预测。",
+      "error": "'DeepSearchFramework' object has no attribute 'deep_search'",
+      "elapsed_time": 0.00010514259338378906,
+      "timestamp": "2025-06-29T12:34:35.024531",
+      "success": false
+    },
+    {
+      "question_id": "programming_1745567367_33",
+      "category": "编程能力：智慧城市设计",
+      "question": "作为文化创意城市的智慧城市解决方案架构师，设计一个能够展示智能建筑比例、数字基础设施覆盖率、产业创新指数、文化活力、旅游吸引力并具备用户反馈收集、实时数据更新、三维可视化展示的决策支持系统系统。使用Vue.js和Express后端开发全栈应用，包含数据库设计和API接口。需要支持用户认证和权限管理，并提供完整的测试用例。",
+      "error": "'DeepSearchFramework' object has no attribute 'deep_search'",
+      "elapsed_time": 5.412101745605469e-05,
+      "timestamp": "2025-06-29T12:34:40.027688",
+      "success": false
+    },
+    {
+      "question_id": "literature_review_1745567367_25",
+      "category": "文献分析能力：多话题科研综述",
+      "question": "作为人工智能研究员，请对'人工智能在医疗决策中的伦理问题'的研究现状进行系统性文献综述，遵循以下分段要求：第一章：理论框架。检索Web of Science核心合集中被引用次数前20的经典文献，梳理该领域的主要理论流派和争议焦点，采用金字塔结构展开论述，字数控制在700字以内，使用MLA引用格式。第二章：区域差异分析。检索Scopus数据库中关于亚洲、欧洲和北美地区的比较研究文献，分析不同地区研究的特点和差异，需包含至少一张对比图表，字数不少于900字，使用APA引用格式。第三章：前沿趋势。检索Google Scholar中近两年发表的高影响力文献，预测该领域未来5年的研究热点和发展方向，需提出至少3个有价值的研究问题，字数控制在1000字以内，使用Vancouver引用格式。",
+      "error": "'DeepSearchFramework' object has no attribute 'deep_search'",
+      "elapsed_time": 5.316734313964844e-05,
+      "timestamp": "2025-06-29T12:34:45.030438",
+      "success": false
+    },
+    {
+      "question_id": "market_research_1745567367_47",
+      "category": "市场研究能力：产品与行业分析",
+      "question": "作为品牌策略师，请对教育科技行业的老年人健康监护系统进行全面的市场调研，以制定未来三年的市场扩张策略。请包含消费者调研结果、产品适配性分析、价格弹性研究、营销传播策略和销售渠道优化建议。",
+      "error": "'DeepSearchFramework' object has no attribute 'deep_search'",
+      "elapsed_time": 4.38690185546875e-05,
+      "timestamp": "2025-06-29T12:34:50.037754",
+      "success": false
+    },
+    {
+      "question_id": "literature_review_1745567367_13",
+      "category": "文献分析能力：多话题科研综述",
+      "question": "作为法学研究者，请对'生物多样性保护的经济价值'相关研究进行文献综述，请按照以下结构进行：第一部分：概念演变。检索1990-2010年发表在SSCI期刊上的文献，分析该领域核心概念的演变历程，使用时间线方式呈现，字数不超过600字，采用脚注引用格式。第二部分：研究方法比较。检索2011-2020年间发表的实证研究文献，比较定量、定性和混合方法的优缺点，以表格形式呈现各方法的适用场景，字数不少于800字，采用哈佛引用格式。第三部分：跨学科应用。检索2021年至今的跨学科研究文献，分析该主题在不同学科领域的应用情况，重点关注创新点和局限性，字数不超过1200字，采用芝加哥引用格式。",
+      "error": "'DeepSearchFramework' object has no attribute 'deep_search'",
+      "elapsed_time": 3.4809112548828125e-05,
+      "timestamp": "2025-06-29T12:34:55.040970",
+      "success": false
+    },
+    {
+      "question_id": "literature_review_1745567367_42",
+      "category": "文献分析能力：多话题科研综述",
+      "question": "请以计算机科学学者的身份，围绕'人工智能在医疗决策中的伦理问题'主题进行多角度文献分析，需要满足以下要求：第一节：概念界定与测量。检索CNKI和Web of Science中的核心文献，对比中英文学术界对该概念的不同理解和测量方法，使用对比分析法，字数不超过800字，采用GB/T 7714引用格式。第二节：影响因素分析。检索近10年发表在SSCI一区和二区期刊的文献，使用PRISMA方法筛选文献，构建影响因素框架模型，字数不少于1200字，采用APA引用格式。第三节：实践应用评估。检索Scopus和EBSCO数据库中的案例研究文献，按照地区、行业、应用模式进行分类，评估应用效果，并提出改进建议，字数控制在1500字以内，采用Chicago引用格式。",
+      "error": "'DeepSearchFramework' object has no attribute 'deep_search'",
+      "elapsed_time": 3.886222839355469e-05,
+      "timestamp": "2025-06-29T12:35:00.117786",
+      "success": false
+    },
+    {
+      "question_id": "long_tail_1745567367_11",
+      "category": "在线检索能力：小众内容定位",
+      "question": "我想了解古代丝绸之路上的音乐交流，尤其是与现代技术的联系方面的内容。",
+      "error": "'DeepSearchFramework' object has no attribute 'deep_search'",
+      "elapsed_time": 1.1205673217773438e-05,
+      "timestamp": "2025-06-29T12:35:05.118785",
+      "success": false
+    },
+    {
+      "question_id": "long_tail_1745567367_38",
+      "category": "在线检索能力：小众内容定位",
+      "question": "请提供有关古代波斯的水利工程的资料，我对与现代技术的联系特别感兴趣。",
+      "error": "'DeepSearchFramework' object has no attribute 'deep_search'",
+      "elapsed_time": 4.410743713378906e-05,
+      "timestamp": "2025-06-29T12:35:10.121463",
+      "success": false
+    }
+  ],
+  "test_timestamp": "2025-06-29T12:35:10.121712",
+  "optimization_notes": [
+    "集成时间感知功能",
+    "优化S3 Agent搜索策略",
+    "增强信息源评估能力",
+    "针对在线搜索场景优化"
+  ]
+}
