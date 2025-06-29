@@ -19,6 +19,7 @@ from ..clients.brightdata_client import BrightDataAsyncClient
 from ..clients.firecrawl_client import FireCrawlAsyncClient
 from .logging_utils import get_logger
 from .time_aware_prompt import TimeAwarePrompt
+from .prompt_manager import get_prompt_manager
 
 logger = logging.getLogger(__name__)
 ds_logger = get_logger(__name__)
@@ -36,23 +37,44 @@ class DeepSearchFramework:
     6. Synthesize: deepseek-chat生成最终答案
     """
     
-    # DeepSearch智能体系统提示词
-    DEEPSEARCH_AGENT_PROMPT = """You are a deep search copilot for complex questions requiring multi-hop reasoning and real-time data integration.
+    # DeepSearch智能体系统提示词 - 针对在线搜索优化
+    DEEPSEARCH_AGENT_PROMPT = """You are an advanced web search intelligence agent specialized in multi-hop reasoning and real-time information gathering.
 
-Your task is to conduct iterative web searches to gather comprehensive information. You will:
+CORE MISSION: Transform complex questions into effective search strategies and retrieve comprehensive, authoritative information.
 
-1. Analyze the question and identify key information gaps
-2. Generate targeted search queries for web search engines
-3. Evaluate search results and select the most valuable URLs
-4. Determine if more searches are needed or if information is sufficient
+SEARCH OPTIMIZATION TECHNIQUES:
+1. **Keyword Decomposition**: Break complex queries into focused search terms
+2. **Search Operators**: Use quotes for exact phrases, site: for specific sources, intitle: for titles
+3. **Query Variations**: Try different phrasings, synonyms, and perspectives
+4. **Authority Sources**: Prioritize official sites, academic papers, financial databases, news outlets
+5. **Temporal Awareness**: Include time-specific terms for recent data (2024, latest, recent, current)
 
-Use these tags:
-- <query>{"query": "search terms"}</query> - Your search query in JSON format
-- <search_complete>True/False</search_complete> - Whether search is complete
-- <important_urls>[1, 3, 5]</important_urls> - IDs of URLs to crawl (up to 3)
-- <thinking>your analysis</thinking> - Your reasoning process
+SEARCH STRATEGY FOR DIFFERENT DOMAINS:
+- **Financial Analysis**: Use "quarterly report", "10-K", "earnings", company name + "financials"
+- **Academic Research**: Include "research", "study", "analysis", "paper", ".edu", ".org"
+- **Market Research**: Search "market report", "industry analysis", "trends", "forecast"
+- **Technical Topics**: Use specific technical terms, version numbers, documentation sites
 
-Continue searching until you have enough information for comprehensive analysis, or reach maximum rounds."""
+EVALUATION CRITERIA:
+1. **Source Authority**: Official sites > Academic > News > General web
+2. **Content Freshness**: Recent data preferred for current analysis
+3. **Information Depth**: Comprehensive coverage vs. superficial mentions
+4. **Data Quality**: Quantitative data, charts, detailed analysis
+5. **Relevance**: Direct answer to query vs. tangential information
+
+ITERATIVE SEARCH PROCESS:
+1. Analyze question and identify key information gaps
+2. Generate targeted search queries using optimization techniques
+3. Evaluate search results and select most valuable URLs (up to 3)
+4. Determine if more searches needed or information sufficient
+
+OUTPUT TAGS:
+- <thinking>your search strategy and reasoning</thinking>
+- <query>{"query": "optimized search terms"}</query>
+- <search_complete>True/False</search_complete>
+- <important_urls>[1, 3, 5]</important_urls>
+
+Continue until comprehensive information gathered or maximum rounds reached."""
 
     def __init__(self, litellm_client, config: Dict[str, Any] = None):
         """
@@ -99,10 +121,14 @@ Continue searching until you have enough information for comprehensive analysis,
         # 初始化时间感知提示
         self.time_aware = TimeAwarePrompt()
         
+        # 初始化提示词管理器（默认使用v1.1优化版本）
+        self.prompt_manager = get_prompt_manager("v1.1")
+        
         logger.info("DeepSearch框架初始化完成 - 复用现有clients")
         logger.info(f"- BrightData SERP: zone={self.brightdata_zone}")
         logger.info(f"- FireCrawl: key=...{self.firecrawl_api_key[-8:]}")
         logger.info("- 时间感知提示已启用")
+        logger.info(f"- 提示词管理器已启用，版本: {self.prompt_manager.get_current_version()}")
         logger.info(f"- 最大搜索轮数: {self.max_search_rounds}")
         logger.info(f"- 每轮最大结果: {self.max_results_per_round}")
         logger.info(f"- 最大爬取URL数: {self.max_crawl_urls}")
@@ -491,50 +517,16 @@ Continue searching until you have enough information for comprehensive analysis,
                 # 获取时间上下文
                 time_context = self._get_time_context()
                 
-                # 构建任务导向的提取提示
-                extract_prompt = f"""你是SearchModelAgent，专门根据任务目标从网页内容中提取最重要的信息部分。
-
-{time_context}
-
-**任务目标分析：**
-问题：{question}
-
-**任务上下文：**
-{task_context if task_context else "这是深度搜索任务，需要全面理解问题背景并提取关键信息"}
-
-**网页信息：**
-标题：{title}
-URL：{url}
-内容：{full_content[:10000]}  # 限制长度避免token超限
-
-**提取要求：**
-1. **核心信息**：直接回答问题的关键内容
-2. **支撑数据**：重要的数字、统计、事实
-3. **关键观点**：专家意见、分析结论
-4. **背景知识**：有助于深度理解的上下文
-5. **时效信息**：最新动态、趋势变化
-6. **引用价值**：可以作为可信来源的内容
-
-**输出格式：**
-请按以下结构输出：
-
-## 核心信息
-[直接相关的关键内容]
-
-## 重要数据
-[关键数字、统计信息]
-
-## 专家观点  
-[权威观点和分析]
-
-## 背景补充
-[必要的背景知识]
-
-**注意：**
-- 保持信息准确性，不要添加原文没有的内容
-- 突出最有价值的部分
-- 保留可以引用的具体表述
-- 去除广告、导航等无关内容"""
+                # 使用Prompt Manager获取内容提取提示
+                extract_prompt = self.prompt_manager.get_prompt(
+                    "content_extraction",
+                    time_context=time_context,
+                    question=question,
+                    task_context=task_context if task_context else "这是深度搜索任务，需要全面理解问题背景并提取关键信息",
+                    title=title,
+                    url=url,
+                    content=full_content[:10000]  # 限制长度避免token超限
+                )
 
                 messages = [
                     {"role": "system", "content": "你是SearchModelAgent，专门负责根据任务目标精准提取网页中最有价值的信息部分。你需要深度理解任务需求，提取最相关、最权威、最有用的内容。"},
@@ -663,52 +655,32 @@ URL：{url}
             # 获取时间上下文
             time_context = self._get_time_context()
             
-            # 构建SearchModel评估提示
-            evaluation_prompt = f"""你是一个专业的信息评估专家，需要从候选网页中选择最有价值的Top3进行深度爬取。
-
-{time_context}
-
-**任务目标分析：**
-问题：{question}
-
-**已有知识：**
-{previous_knowledge if previous_knowledge else "（第一轮搜索，暂无已有知识）"}
-
-**候选网页（共{len(search_results)}个）：**
-{formatted_info}
-
-**评估标准：**
-1. 与问题的直接相关性
-2. 信息的权威性和可信度
-3. 内容的深度和完整性
-4. 能否填补知识缺口
-5. 信息的时效性（重要：考虑当前时间）
-
-**要求：**
-- 分析每个候选网页的价值
-- 按质量和相关性排序
-- 选择Top3最有价值的网页
-- 说明选择理由
-- 判断是否需要继续搜索
-- 特别注意信息的时效性，优先选择最新和最相关的内容
-
-请使用以下格式回答：
-<thinking>
-分析过程...
-</thinking>
-
-<evaluation>
-对候选网页的详细评估...
-</evaluation>
-
-<important_urls>[1, 3, 7]</important_urls>
-
-<search_complete>True/False</search_complete>
-
-<next_query>{{\"query\": \"下一轮搜索查询\"}}</next_query>"""
+            # 使用Prompt Manager获取评估提示
+            evaluation_prompt = self.prompt_manager.get_prompt(
+                "select_evaluation",
+                time_context=time_context,
+                question=question,
+                previous_knowledge=previous_knowledge if previous_knowledge else "（第一轮搜索，暂无已有知识）",
+                num_results=len(search_results),
+                formatted_info=formatted_info
+            )
 
             messages = [
-                {"role": "system", "content": "你是SearchModel，专门负责评估和选择最有价值的信息源。你需要根据任务目标，从候选网页中选择质量最高、最相关的Top3进行深度分析。"},
+                {"role": "system", "content": """你是SearchModel，专门负责评估和选择最有价值的在线信息源。你具备以下专业能力：
+
+**信息源评估专长：**
+- 识别权威来源：官方网站、学术机构、知名媒体、行业报告
+- 评估内容质量：数据完整性、分析深度、来源可信度
+- 判断时效性：最新数据、历史趋势、时间相关性
+- 分析相关性：直接回答问题 vs 边缘信息
+
+**搜索智能优化：**
+- 理解不同查询类型的信息需求（财务分析、学术研究、市场调研等）
+- 识别高价值关键词和搜索模式
+- 评估搜索结果的覆盖完整性
+- 预测下一轮搜索的最优方向
+
+你的核心任务：从候选网页中选择质量最高、最相关的Top3进行深度分析，确保信息获取的准确性和完整性。"""},
                 {"role": "user", "content": evaluation_prompt}
             ]
             
@@ -846,39 +818,11 @@ URL：{url}
             # 构建引用映射
             citation_context = "\n\n".join(sources_info)
             
-            # 构建Gen模型的结构化生成提示
-            system_prompt = f"""你是一个顶级的信息整合和分析专家。你需要根据用户问题的潜在诉求，将多个来源的信息进行结构化整理，并提供完整、准确的引用。
-
-{time_context}
-
-核心要求：
-1. **深度理解问题诉求**：分析问题背后的真实需求和目标
-2. **结构化组织内容**：按逻辑层次清晰地组织信息
-3. **多维度分析**：从不同角度提供全面分析
-4. **精确引用**：每个关键信息都要标注来源【来源X】
-5. **实用性导向**：提供可操作的结论和建议
-6. **时间意识**：在分析和回答中充分考虑当前时间背景
-
-输出格式要求：
-## 问题核心分析
-[深度分析问题的本质和背景]
-
-## 关键发现
-[按重要性排序的核心发现，每条都有引用]
-
-## 多维度解读
-[从不同角度的深入分析]
-
-## 数据洞察
-[重要数据和趋势分析，附引用]
-
-## 结论与建议
-[基于分析的结论和实用建议]
-
-## 参考来源
-[完整的来源列表]
-
-引用格式：在相关内容后直接添加【来源X】，如："根据最新研究显示...【来源1】"。"""
+            # 使用Prompt Manager获取系统提示
+            system_prompt = self.prompt_manager.get_prompt(
+                "synthesize_system",
+                time_context=time_context
+            )
 
             user_prompt = f"""请根据以下问题的潜在诉求，对收集到的信息进行深度整合和结构化分析：
 
@@ -997,20 +941,12 @@ URL：{url}
             # 获取时间上下文
             time_context = self._get_time_context()
             
-            intent_prompt = f"""请分析以下问题背后的潜在诉求和真实需求：
-
-{time_context}
-
-问题：{question}
-
-请分析：
-1. 用户的核心关注点是什么？
-2. 他们希望解决什么问题？
-3. 需要什么类型的信息（事实、分析、建议等）？
-4. 答案的应用场景可能是什么？
-5. 时间敏感性（是否需要最新信息）？
-
-请简洁地总结问题的潜在诉求（100字以内）："""
+            # 使用Prompt Manager获取问题分析提示
+            intent_prompt = self.prompt_manager.get_prompt(
+                "question_analysis",
+                time_context=time_context,
+                question=question
+            )
 
             messages = [
                 {"role": "system", "content": "你是问题分析专家，擅长理解用户问题背后的真实需求。"},

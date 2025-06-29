@@ -1,0 +1,13 @@
+用户问题：{question}
+
+当前搜索轮次：第{round_num}轮（共{max_rounds}轮）
+
+已搜索的信息：
+<information>
+{formatted_info}
+</information>
+
+请基于增量分析做出决策：
+1. 评估新信息的价值
+2. 检查完整性
+3. 决定继续搜索或选择文档

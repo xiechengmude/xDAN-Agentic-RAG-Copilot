@@ -1,0 +1,16 @@
+Question: {question}
+Search Round: {round_num}/{max_rounds}
+
+Current Information:
+<information>
+{formatted_info}
+</information>
+
+Analysis and Decision:
+<thinking>
+- What new information was found this round?
+- What critical information is still missing?
+- Is it worth searching more or do we have enough?
+</thinking>
+
+Make your decision based on the analysis above.

@@ -1,0 +1,56 @@
+{
+  "stage": "阶段二",
+  "total": 10,
+  "questions": [
+    {
+      "id": 1,
+      "question": "授信申请接口 `applyCredit` 中的 `agreementTime` 有什么作用？格式是什么？",
+      "category": "API"
+    },
+    {
+      "id": 2,
+      "question": "API 中的 `repayMethod` 字段有哪些取值？与平台文档中还款方式有什么关系？",
+      "category": "API"
+    },
+    {
+      "id": 3,
+      "question": "在'合作方绑卡批扣模式'下，智信平台发起授信会依次调用哪些接口？",
+      "category": "API"
+    },
+    {
+      "id": 4,
+      "question": "`loanTrial` 和 `applyLoan` 接口分别用于什么？其调用链是怎样的？",
+      "category": "API"
+    },
+    {
+      "id": 5,
+      "question": "`applyCredit` 接口中的 `userInfo`、`companyInfo`、`faceInfo` 字段由哪个系统采集？",
+      "category": "API"
+    },
+    {
+      "id": 6,
+      "question": "API 文档中“creditInfo”中的 `creditType = C` 表示什么？在系统中这个类型会如何影响借款或还款处理逻辑？",
+      "category": "API"
+    },
+    {
+      "id": 7,
+      "question": "当 `applyRepayment` 返回的 `repayStatus = P`，平台会走哪些后续处理流程？涉及哪些系统组件？",
+      "category": "流程"
+    },
+    {
+      "id": 8,
+      "question": "`applyCertification` 接口链路是如何从前端一路调用至机构的？",
+      "category": "API"
+    },
+    {
+      "id": 10,
+      "question": "根据你对智信授信流程的理解，用户授信会调用API文档3.2 授信业务中的哪些接口？不会调用哪些接口？",
+      "category": "API"
+    },
+    {
+      "id": 11,
+      "question": "在API文档中`2.3 数据交互规范 `中提到了对请求响应较大的数据压缩，这个压缩应该是由哪个系统完成的",
+      "category": "API"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+Question: {question}
+
+Initial Search Results:
+<information>
+{formatted_info}
+</information>
+
+Evaluate and decide:
+<thinking>
+1. Question requires: [identify key information needs]
+2. Current coverage: [what's found vs what's needed]
+3. Decision rationale: [why search more or stop]
+</thinking>
+
+Output your decision.

@@ -1,0 +1,17 @@
+Question: {question}
+Round: {round_num}/{max_rounds}
+
+Accumulated Information:
+<information>
+{formatted_info}
+</information>
+
+Incremental Analysis:
+<thinking>
+1. New valuable info: [what this round added]
+2. Remaining gaps: [what's still missing]
+3. Search efficiency: [diminishing returns?]
+4. Decision: [continue with specific query or stop]
+</thinking>
+
+Output your decision.

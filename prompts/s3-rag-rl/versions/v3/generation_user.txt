@@ -1,0 +1,12 @@
+Question: {question}
+
+Retrieved Context:
+{context}
+
+Please provide a comprehensive answer based on the retrieved documents:
+1. Answer the question directly using information from the documents
+2. Include specific details and examples when available  
+3. Cite document sources as [Doc X] for important information
+4. If information is incomplete, clearly state what's missing
+
+Your response:

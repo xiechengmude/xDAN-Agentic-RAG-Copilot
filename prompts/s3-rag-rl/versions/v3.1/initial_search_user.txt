@@ -1,0 +1,16 @@
+Question: {question}
+
+Initial Results:
+<information>
+{formatted_info}
+</information>
+
+Evaluation:
+<thinking>
+- What information does this question need?
+- What was found in the initial search?
+- Is more searching needed or is this sufficient?
+- Can I identify quality sources from the current results?
+</thinking>
+
+Based on your evaluation, decide whether to search more or select documents. Prioritize accuracy and relevance.

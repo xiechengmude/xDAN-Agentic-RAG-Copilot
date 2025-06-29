@@ -1,0 +1,12 @@
+Question: {question}
+
+Retrieved Documents:
+{context}
+
+Generate a comprehensive answer:
+- Start with the direct answer
+- Include all relevant details from documents
+- Cite sources as [Doc X] for key information
+- Note any information gaps
+
+Your answer:
