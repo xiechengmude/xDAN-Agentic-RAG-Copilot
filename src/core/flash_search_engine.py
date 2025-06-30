@@ -52,6 +52,138 @@ class FlashSearchEngine:
         
         logger.info("FlashSearchEngine初始化完成")
     
+    def _fix_relative_url(self, url: str, base_domain: str = "https://www.google.com") -> str:
+        """
+        修复相对路径URL为完整URL
+        
+        Args:
+            url: 原始URL（可能是相对路径）
+            base_domain: 基础域名
+            
+        Returns:
+            修复后的完整URL
+        """
+        if not url:
+            return url
+            
+        # 如果已经是完整URL，直接返回
+        if url.startswith(('http://', 'https://')):
+            return url
+            
+        # 如果是相对路径，添加base_domain
+        if url.startswith('/'):
+            return base_domain + url
+            
+        # 如果是其他格式，尝试添加https://
+        if '.' in url and not url.startswith('www.'):
+            return f"https://{url}"
+            
+        return url
+    
+    def _is_valid_crawl_url(self, url: str) -> bool:
+        """
+        验证URL是否适合爬取
+        
+        Args:
+            url: 待验证的URL
+            
+        Returns:
+            是否是有效的爬取URL
+        """
+        if not url:
+            return False
+            
+        # 过滤掉Google搜索页面等无价值URL
+        invalid_patterns = [
+            '/search?',
+            'google.com/search',
+            'tbm=nws',
+            'udm=2', 
+            'fbs=',
+            'sa=X',
+            'ved=',
+            'jsessionid=',  # 添加jsessionid过滤
+            '&amp;',        # HTML实体
+            'javascript:',  # JavaScript链接
+            'mailto:',      # 邮件链接
+        ]
+        
+        for pattern in invalid_patterns:
+            if pattern in url:
+                logger.debug(f"[URL过滤] 跳过无效URL: {url[:80]}... (匹配模式: {pattern})")
+                return False
+                
+        # 检查URL长度（过长的URL通常是无效的）
+        if len(url) > 500:
+            logger.debug(f"[URL过滤] 跳过过长URL: {url[:80]}... (长度: {len(url)})")
+            return False
+                
+        return True
+    
+    def _clean_url(self, url: str) -> str:
+        """
+        清理URL，移除不必要的参数
+        
+        Args:
+            url: 原始URL
+            
+        Returns:
+            清理后的URL
+        """
+        if not url:
+            return url
+        
+        # 移除jsessionid等会话参数
+        if ';jsessionid=' in url:
+            url = url.split(';jsessionid=')[0]
+        
+        return url
+    
+    def _enhance_question_with_time(self, question: str) -> str:
+        """
+        简化的时间感知处理，为问题添加时间上下文
+        
+        Args:
+            question: 原始问题
+            
+        Returns:
+            增强的问题
+        """
+        import re
+        from datetime import datetime
+        
+        # 检查是否包含时间关键词
+        time_keywords = ['最新', '最近', '今年', '2024', '2025', '当前', '现在']
+        has_time_context = any(keyword in question for keyword in time_keywords)
+        
+        if not has_time_context:
+            # 如果没有时间上下文，添加当前年份
+            current_year = datetime.now().year
+            enhanced_question = f"{question} {current_year}"
+            logger.debug(f"[时间感知] 添加时间上下文: {question} → {enhanced_question}")
+            return enhanced_question
+        
+        return question
+    
+    def _format_source_citation(self, content_item: Dict[str, Any], index: int) -> str:
+        """
+        格式化来源引用标注
+        
+        Args:
+            content_item: 内容项
+            index: 来源编号
+            
+        Returns:
+            格式化的引用标注
+        """
+        title = content_item.get("title", f"来源{index}")
+        is_fallback = content_item.get("is_fallback", False)
+        
+        if is_fallback:
+            return f"【来源{index}-摘要】{title}"
+        else:
+            return f"【来源{index}】{title}"
+    
     
     async def search(self, question: str) -> List[Dict[str, Any]]:
         """
@@ -67,9 +199,12 @@ class FlashSearchEngine:
         start_time = time.time()
         
         try:
+            # 应用时间感知处理
+            enhanced_question = self._enhance_question_with_time(question)
+            
             # 使用BrightData进行搜索
             search_response = await self.bright_client.search(
-                query=question,
+                query=enhanced_question,
                 num_results=SEARCH_RESULTS,
                 country="CN"
             )
@@ -85,17 +220,35 @@ class FlashSearchEngine:
                 logger.warning("[Search] BrightData返回空结果")
                 return []
             
-            # 格式化搜索结果
+            # 格式化搜索结果并应用URL修复和过滤
             formatted_results = []
+            skipped_count = 0
+            
             for i, result in enumerate(search_results):
+                original_url = result.get("url", "")
+                
+                # 修复URL
+                fixed_url = self._fix_relative_url(original_url)
+                cleaned_url = self._clean_url(fixed_url)
+                
+                # 验证URL是否有效
+                if not self._is_valid_crawl_url(cleaned_url):
+                    skipped_count += 1
+                    logger.debug(f"[Search] 跳过无效URL: {original_url}")
+                    continue
+                
                 formatted_result = {
-                    "rank": i + 1,
+                    "rank": len(formatted_results) + 1,  # 重新编号
                     "title": result.get("title", ""),
-                    "url": result.get("url", ""),
+                    "url": cleaned_url,  # 使用清理后的URL
                     "snippet": result.get("snippet", ""),
                     "source": "brightdata"
                 }
                 formatted_results.append(formatted_result)
+            
+            # 记录过滤统计
+            if skipped_count > 0:
+                logger.info(f"[Search] 过滤了 {skipped_count} 个无效URL")
             
             duration = time.time() - start_time
             logger.info(f"[Search] ✅ 完成搜索: {len(formatted_results)}个结果 ({duration:.1f}s)")
@@ -313,14 +466,13 @@ class FlashSearchEngine:
             return "抱歉，未能获取到相关信息来回答您的问题。"
         
         try:
-            # 构建内容摘要
+            # 构建内容摘要，使用增强的引用标注
             content_summary = ""
             for i, item in enumerate(content, 1):
-                title = item.get("title", f"来源{i}")
+                citation = self._format_source_citation(item, i)
                 text = item.get("content", "")
-                source_type = "（摘要）" if item.get("is_fallback") else ""
                 
-                content_summary += f"来源{i}: {title}{source_type}\n"
+                content_summary += f"{citation}\n"
                 content_summary += f"{text[:800]}...\n\n"  # 限制每个来源的长度
             
             # 构建生成prompt
