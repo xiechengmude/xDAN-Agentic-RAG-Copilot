@@ -445,6 +445,65 @@ Continue until comprehensive information gathered or maximum rounds reached."""
         
         return decision
 
+    def _fix_relative_url(self, url: str, base_domain: str = "https://www.google.com") -> str:
+        """
+        修复相对路径URL为完整URL
+        
+        Args:
+            url: 原始URL（可能是相对路径）
+            base_domain: 基础域名
+            
+        Returns:
+            修复后的完整URL
+        """
+        if not url:
+            return url
+            
+        # 如果已经是完整URL，直接返回
+        if url.startswith(('http://', 'https://')):
+            return url
+            
+        # 如果是相对路径，添加base_domain
+        if url.startswith('/'):
+            return base_domain + url
+            
+        # 如果是其他格式，尝试添加https://
+        if '.' in url and not url.startswith('www.'):
+            return f"https://{url}"
+            
+        return url
+    
+    def _is_valid_crawl_url(self, url: str) -> bool:
+        """
+        验证URL是否适合爬取
+        
+        Args:
+            url: 待验证的URL
+            
+        Returns:
+            是否是有效的爬取URL
+        """
+        if not url:
+            return False
+            
+        # 过滤掉Google搜索页面等无价值URL
+        invalid_patterns = [
+            '/search?',
+            'google.com/search',
+            'tbm=nws',
+            'udm=2',
+            'fbs=',
+            'sa=X',
+            'ved='
+        ]
+        
+        for pattern in invalid_patterns:
+            if pattern in url:
+                logger.debug(f"[URL过滤] 跳过无效URL: {url} (匹配模式: {pattern})")
+                return False
+                
+        return True
+
     async def crawl_single_url(self, url: str) -> Dict[str, Any]:
         """
         爬取单个网页内容
@@ -456,10 +515,22 @@ Continue until comprehensive information gathered or maximum rounds reached."""
             爬取结果
         """
         try:
-            logger.info(f"[CRAWL] 开始爬取: {url}")
+            # 修复相对路径URL
+            fixed_url = self._fix_relative_url(url)
+            
+            # 验证URL有效性
+            if not self._is_valid_crawl_url(fixed_url):
+                logger.warning(f"[CRAWL] ⚠️  跳过无效URL: {url}")
+                return {
+                    "url": url,
+                    "success": False,
+                    "error": "Invalid URL for crawling (Google search page or relative path)"
+                }
+            
+            logger.info(f"[CRAWL] 开始爬取: {fixed_url}")
             
             # 使用FireCrawl爬取内容
-            result = await self.firecrawl_client.scrape_url(url)
+            result = await self.firecrawl_client.scrape_url(fixed_url)
             
             if result.get("success"):
                 content = result.get("data", {})
@@ -504,21 +575,45 @@ Continue until comprehensive information gathered or maximum rounds reached."""
         if not selected_urls:
             return []
         
+        # 预处理URL - 修复相对路径并过滤无效URL
+        processed_urls = []
+        skipped_urls = []
+        
+        for url in selected_urls:
+            fixed_url = self._fix_relative_url(url)
+            if self._is_valid_crawl_url(fixed_url):
+                processed_urls.append(fixed_url)
+            else:
+                skipped_urls.append(url)
+                logger.info(f"[URL过滤] 跳过无效URL: {url}")
+        
+        if not processed_urls:
+            logger.warning(f"[FireCrawl] ⚠️  所有URL都被过滤，跳过的URL数量: {len(skipped_urls)}")
+            # 返回跳过的URL结果
+            return [{
+                "url": url,
+                "success": False,
+                "error": "Invalid URL for crawling (Google search page or relative path)"
+            } for url in skipped_urls]
+        
         start_time = time.time()
-        ds_logger.log_phase_start("Crawl爬取", urls_count=len(selected_urls))
-        ds_logger.log_input("Crawl爬取", {"urls": selected_urls})
+        ds_logger.log_phase_start("Crawl爬取", urls_count=len(processed_urls))
+        ds_logger.log_input("Crawl爬取", {
+            "valid_urls": processed_urls,
+            "skipped_urls": skipped_urls
+        })
         
         await self._ensure_clients()
         
-        logger.info(f"[FireCrawl] 开始并行爬取 {len(selected_urls)} 个网页")
+        logger.info(f"[FireCrawl] 开始并行爬取 {len(processed_urls)} 个有效网页（已跳过 {len(skipped_urls)} 个无效URL）")
         
         # 使用FireCrawl client的批量爬取功能
         ds_logger.log_api_call("FireCrawl", "POST", "Batch Scrape", 
-                              urls_count=len(selected_urls))
+                              urls_count=len(processed_urls))
         
         api_start = time.time()
         crawl_results = await self.firecrawl_client.batch_scrape(
-            urls=selected_urls,
+            urls=processed_urls,
             formats=['markdown'],  # 只要markdown格式，提高效率
             options={
                 'only_main_content': True,
@@ -530,8 +625,10 @@ Continue until comprehensive information gathered or maximum rounds reached."""
                                   duration=time.time() - api_start,
                                   results_count=len(crawl_results))
         
-        # 转换结果格式
+        # 转换结果格式并合并跳过的URL
         crawled_content = []
+        
+        # 添加成功和失败的爬取结果
         for result in crawl_results:
             if result.get('success'):
                 data = result.get('data', {})
@@ -549,20 +646,33 @@ Continue until comprehensive information gathered or maximum rounds reached."""
                     "error": result.get('error', 'Unknown error')
                 })
         
+        # 添加跳过的URL
+        for skipped_url in skipped_urls:
+            crawled_content.append({
+                "url": skipped_url,
+                "success": False,
+                "error": "Invalid URL for crawling (Google search page or relative path)"
+            })
+        
         success_count = sum(1 for item in crawled_content if item.get("success"))
-        logger.info(f"[FireCrawl] ✅ 并行爬取完成: {success_count}/{len(selected_urls)} 成功")
+        total_urls = len(selected_urls)
+        skipped_count = len(skipped_urls)
+        
+        logger.info(f"[FireCrawl] ✅ 并行爬取完成: {success_count}/{total_urls} 成功（跳过 {skipped_count} 个无效URL）")
         
         ds_logger.log_output("Crawl爬取", {
-            "total_urls": len(selected_urls),
+            "total_urls": total_urls,
+            "valid_urls": len(processed_urls),
+            "skipped_urls": skipped_count,
             "success_count": success_count,
-            "failed_count": len(selected_urls) - success_count,
+            "failed_count": total_urls - success_count,
             "total_content_length": sum(item.get('content_length', 0) for item in crawled_content if item.get('success'))
         })
         
         ds_logger.log_phase_end("Crawl爬取", success=True,
                                duration=time.time() - start_time,
                                success_count=success_count,
-                               total_count=len(selected_urls))
+                               total_count=total_urls)
         
         return crawled_content
 
