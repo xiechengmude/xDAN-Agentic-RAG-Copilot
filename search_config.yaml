@@ -1,0 +1,210 @@
+# DeepSearch 搜索配置文件
+# 所有搜索相关参数的集中配置
+
+# 基础搜索配置
+search:
+  # 搜索轮数控制
+  max_rounds: 5                    # 最大搜索轮数
+  min_rounds: 1                    # 最小搜索轮数
+  
+  # 搜索结果数量
+  results_per_round: 10            # 每轮搜索返回的结果数
+  max_total_results: 50            # 总结果数上限
+  
+  # URL爬取控制
+  max_crawl_urls_per_round: 3      # 每轮最多爬取的URL数
+  max_total_crawl_urls: 10         # 总爬取URL数上限
+  
+  # 超时控制
+  search_timeout: 30               # 搜索超时时间（秒）
+  crawl_timeout: 20                # 爬取超时时间（秒）
+  total_timeout: 300               # 总超时时间（秒）
+
+# 并发搜索配置
+concurrent_search:
+  # 默认策略：single/smart/flash
+  default_strategy: "single"
+  
+  # 并发控制
+  max_concurrent_searches: 5       # 最大并发搜索数
+  max_concurrent_crawls: 3         # 最大并发爬取数
+  
+  # 策略详细配置
+  strategies:
+    single:
+      enabled: false
+      description: "传统单次搜索模式"
+      
+    smart:
+      enabled: true
+      max_parallel: 2              # 最大并行查询数
+      subquery_method: "expand"    # 查询生成方法：expand
+      expansion_dimensions:        # 扩展维度
+        - time                     # 时间维度（添加最新、年份等）
+        - depth                    # 深度维度（添加分析、专业等）
+      
+    flash:
+      enabled: true
+      max_parallel: 3              # 最大并行查询数
+      subquery_method: "decompose" # 查询生成方法：decompose
+      decompose_prompt_template: |
+        将下面的问题拆分为{max_parallel}个可以并发搜索的子问题。
+        要求：
+        1. 子问题之间相互独立，可并发搜索
+        2. 子问题组合能完整回答原问题
+        3. 每个子问题都是具体的搜索查询
+
+# 内容质量控制
+content_quality:
+  # 内容长度限制
+  min_content_length: 500          # 最小内容长度（字符）
+  max_content_length: 20000        # 最大内容长度（字符）
+  
+  # 相关性控制
+  relevance_threshold: 0.7         # 相关性阈值（0-1）
+  quality_score_threshold: 0.6     # 质量分数阈值（0-1）
+  
+  # 内容去重
+  dedup_enabled: true              # 是否启用去重
+  dedup_similarity_threshold: 0.9  # 去重相似度阈值
+
+# 搜索模式配置
+search_modes:
+  flash:
+    name: "Flash模式"
+    description: "快速并发搜索，1-2轮完成"
+    max_rounds: 2
+    concurrent_strategy: "flash"
+    results_per_round: 10
+    crawl_urls_per_round: 2
+    
+  standard:
+    name: "标准模式"
+    description: "平衡速度和深度，3-5轮搜索"
+    max_rounds: 5
+    concurrent_strategy: "smart"
+    results_per_round: 10
+    crawl_urls_per_round: 3
+    
+  deep:
+    name: "深度模式"
+    description: "深度探索，5-10轮搜索"
+    max_rounds: 10
+    concurrent_strategy: "single"
+    results_per_round: 15
+    crawl_urls_per_round: 5
+
+# 搜索引擎配置
+search_engines:
+  brightdata:
+    enabled: true
+    priority: 1
+    zone: "${BRIGHTDATA_ZONE:your_zone}"
+    timeout: 30
+    retry_count: 2
+    
+  serper:
+    enabled: false
+    priority: 2
+    api_key: "${SERPER_API_KEY:}"
+    
+  google:
+    enabled: false
+    priority: 3
+    api_key: "${GOOGLE_API_KEY:}"
+    cx: "${GOOGLE_CX:}"
+
+# 爬虫配置
+crawlers:
+  firecrawl:
+    enabled: true
+    priority: 1
+    api_key: "${FIRECRAWL_API_KEY:}"
+    timeout: 20
+    retry_count: 1
+    
+  jina:
+    enabled: false
+    priority: 2
+    api_key: "${JINA_API_KEY:}"
+
+# 高级配置
+advanced:
+  # 缓存配置
+  cache:
+    enabled: true
+    ttl: 3600                      # 缓存过期时间（秒）
+    max_size: 1000                 # 最大缓存条目数
+    
+  # 速率限制
+  rate_limit:
+    enabled: true
+    max_requests_per_minute: 60
+    max_crawls_per_minute: 30
+    
+  # 日志配置
+  logging:
+    level: "INFO"                  # 日志级别：DEBUG/INFO/WARNING/ERROR
+    verbose_search: false          # 详细搜索日志
+    log_crawl_content: false       # 记录爬取内容
+    
+  # 性能优化
+  performance:
+    batch_processing: true         # 批量处理
+    lazy_loading: true            # 延迟加载
+    connection_pooling: true      # 连接池
+
+# 特定领域配置
+domain_specific:
+  # 金融领域
+  finance:
+    preferred_sources:
+      - "finance.yahoo.com"
+      - "bloomberg.com"
+      - "reuters.com"
+    keywords_boost:
+      - "earnings"
+      - "financial report"
+      - "stock analysis"
+      
+  # 技术领域
+  technology:
+    preferred_sources:
+      - "github.com"
+      - "stackoverflow.com"
+      - "arxiv.org"
+    keywords_boost:
+      - "implementation"
+      - "documentation"
+      - "technical"
+      
+  # 学术领域
+  academic:
+    preferred_sources:
+      - "scholar.google.com"
+      - "pubmed.ncbi.nlm.nih.gov"
+      - "arxiv.org"
+    keywords_boost:
+      - "research"
+      - "study"
+      - "paper"
+
+# 实验性功能
+experimental:
+  # 自适应搜索
+  adaptive_search:
+    enabled: false
+    learn_from_feedback: true
+    adjust_parameters: true
+    
+  # 智能重试
+  smart_retry:
+    enabled: false
+    max_retries: 3
+    backoff_factor: 2
+    
+  # 预测性搜索
+  predictive_search:
+    enabled: false
+    prefetch_related: true
+    cache_predictions: true

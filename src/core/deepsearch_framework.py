@@ -20,6 +20,7 @@ from ..clients.firecrawl_client import FireCrawlAsyncClient
 from .logging_utils import get_logger
 from .time_aware_prompt import TimeAwarePrompt
 from .prompt_manager import get_prompt_manager
+from .search_config_loader import search_config
 
 logger = logging.getLogger(__name__)
 ds_logger = get_logger(__name__)
@@ -124,15 +125,15 @@ Continue until comprehensive information gathered or maximum rounds reached."""
         
         # DeepSearch配置 - 动态优化
         deepsearch_config = config.get('deepsearch', {})
-        self.max_search_rounds = deepsearch_config.get('max_search_rounds', 5)
-        self.max_results_per_round = deepsearch_config.get('max_results_per_round', 10)
-        self.max_crawl_urls = deepsearch_config.get('max_crawl_urls', 3)
+        self.max_search_rounds = deepsearch_config.get('max_search_rounds', search_config.get('search.max_rounds', 5))
+        self.max_results_per_round = deepsearch_config.get('max_results_per_round', search_config.get('search.results_per_round', 10))
+        self.max_crawl_urls = deepsearch_config.get('max_crawl_urls', search_config.get('search.max_crawl_urls_per_round', 3))
         self.max_concurrent_crawls = deepsearch_config.get('max_concurrent_crawls', 5)  # 提高并发
         
         # 性能优化配置
         self.enable_parallel_processing = deepsearch_config.get('enable_parallel_processing', True)
-        self.crawl_timeout = deepsearch_config.get('crawl_timeout', 20)  # 减少超时时间
-        self.max_content_length = deepsearch_config.get('max_content_length', 15000)  # 内容长度限制
+        self.crawl_timeout = deepsearch_config.get('crawl_timeout', search_config.get('search.crawl_timeout', 20))  # 减少超时时间
+        self.max_content_length = deepsearch_config.get('max_content_length', search_config.get('content_quality.max_content_length', 15000))  # 内容长度限制
         
         # 初始化clients（稍后在使用时创建）
         self.brightdata_client = None
@@ -146,13 +147,18 @@ Continue until comprehensive information gathered or maximum rounds reached."""
         self.prompt_version = prompt_version
         self.prompt_manager = get_prompt_manager(prompt_version)
                 
-        # 并发搜索配置
-        self.concurrent_search_strategy = deepsearch_config.get('concurrent_search_strategy', 'single')
-        self.concurrent_configs = {
+        # 并发搜索配置 - 从search_config.yaml加载
+        self.concurrent_search_strategy = deepsearch_config.get(
+            'concurrent_search_strategy',
+            search_config.get('concurrent_search.default_strategy', 'single')
+        )
+        
+        # 从配置文件加载策略配置
+        self.concurrent_configs = search_config.get('concurrent_search.strategies', {
             "single": {"enabled": False},
             "flash": {"enabled": True, "max_parallel": 3, "subquery_method": "decompose"},
             "smart": {"enabled": True, "max_parallel": 2, "subquery_method": "expand"}
-        }
+        })
         
         logger.info(f"- 并发搜索策略: {self.concurrent_search_strategy}")
 
@@ -698,7 +704,7 @@ Continue until comprehensive information gathered or maximum rounds reached."""
         
         return extracted_content
 
-        async def search_phase(self, query: str, num_results: int = 10, enable_concurrent: bool = None) -> Tuple[List[Dict], bool]:
+    async def search_phase(self, query: str, num_results: int = 10, enable_concurrent: bool = None) -> Tuple[List[Dict], bool]:
         """
         DeepSearch的Search阶段：通过SERP获取网页候选
         现在支持并发搜索，完全向后兼容
@@ -1246,7 +1252,17 @@ Continue until comprehensive information gathered or maximum rounds reached."""
         # 处理搜索模式配置
         original_strategy = self.concurrent_search_strategy
         if search_mode:
-            self.concurrent_search_strategy = search_mode
+            # 从配置文件加载搜索模式配置
+            mode_config = search_config.get_search_mode_config(search_mode)
+            if mode_config:
+                self.concurrent_search_strategy = mode_config.get('concurrent_strategy', search_mode)
+                # 应用模式特定的参数
+                if 'max_rounds' in mode_config:
+                    max_rounds = min(max_rounds, mode_config['max_rounds'])
+                if 'results_per_round' in mode_config:
+                    num_results = mode_config.get('results_per_round', num_results)
+            else:
+                self.concurrent_search_strategy = search_mode
             logger.info(f"[并发搜索] 临时设置搜索模式为: {search_mode}")
         
         try:
@@ -1596,7 +1612,20 @@ Continue until comprehensive information gathered or maximum rounds reached."""
             time_context = self._get_time_context()
             
             # 创建拆分prompt
-            decompose_prompt = f"""
+# 从配置文件获取拆分prompt模板
+            decompose_template = search_config.get(
+                'concurrent_search.strategies.flash.decompose_prompt_template',
+                None
+            )
+            
+            if decompose_template:
+                decompose_prompt = decompose_template.format(
+                    max_parallel=max_parallel,
+                    query=query,
+                    time_context=time_context
+                )
+            else:
+                decompose_prompt = f"""
 你是搜索专家，请将下面的问题拆分为{max_parallel}个可以并发搜索的子问题。
 
 原问题：{query}
