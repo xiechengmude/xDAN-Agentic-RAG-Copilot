@@ -1,0 +1,11 @@
+{
+  "question_id": "market_research_1745567367_16",
+  "question": "请以市场营销总监的身份，为一家金融科技创业公司分析基于订阅的生活用品配送服务的市场前景，以了解行业趋势和技术发展方向。请提供详细的市场细分分析、目标客户画像、品牌定位建议、营销策略框架和投资回报预测。",
+  "category": "市场研究能力：产品与行业分析",
+  "start_time": "2025-06-30T16:14:00.203340",
+  "end_time": "2025-06-30T16:14:00.203384",
+  "duration_seconds": 4.4e-05,
+  "result": null,
+  "success": false,
+  "error": "object async_generator can't be used in 'await' expression"
+}
