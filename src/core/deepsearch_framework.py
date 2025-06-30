@@ -145,7 +145,17 @@ Continue until comprehensive information gathered or maximum rounds reached."""
         # 初始化提示词管理器
         self.prompt_version = prompt_version
         self.prompt_manager = get_prompt_manager(prompt_version)
+                
+        # 并发搜索配置
+        self.concurrent_search_strategy = deepsearch_config.get('concurrent_search_strategy', 'single')
+        self.concurrent_configs = {
+            "single": {"enabled": False},
+            "flash": {"enabled": True, "max_parallel": 3, "subquery_method": "decompose"},
+            "smart": {"enabled": True, "max_parallel": 2, "subquery_method": "expand"}
+        }
         
+        logger.info(f"- 并发搜索策略: {self.concurrent_search_strategy}")
+
         logger.info("DeepSearch框架初始化完成 - 复用现有clients")
         logger.info(f"- BrightData SERP: zone={self.brightdata_zone}")
         logger.info(f"- FireCrawl: key=...{self.firecrawl_api_key[-8:]}")
@@ -688,17 +698,33 @@ Continue until comprehensive information gathered or maximum rounds reached."""
         
         return extracted_content
 
-    async def search_phase(self, query: str, num_results: int = 10) -> Tuple[List[Dict], bool]:
+        async def search_phase(self, query: str, num_results: int = 10, enable_concurrent: bool = None) -> Tuple[List[Dict], bool]:
         """
         DeepSearch的Search阶段：通过SERP获取网页候选
+        现在支持并发搜索，完全向后兼容
         
         Args:
             query: 搜索查询
             num_results: 结果数量
+            enable_concurrent: 是否启用并发搜索（None时根据策略决定）
             
         Returns:
             搜索结果和成功状态
         """
+        # 决定是否启用并发
+        if enable_concurrent is None:
+            config = self.concurrent_configs.get(self.concurrent_search_strategy, {})
+            enable_concurrent = config.get("enabled", False)
+        
+        if not enable_concurrent:
+            # 保持原有逻辑完全不变
+            return await self._original_search_phase(query, num_results)
+        
+        # 新增：并发搜索逻辑
+        return await self._concurrent_search_phase(query, num_results)
+    
+    async def _original_search_phase(self, query: str, num_results: int = 10) -> Tuple[List[Dict], bool]:
+        """原有的单次搜索逻辑，完全不变"""
         result = await self.serp_search(query, num_results)
         
         if result["success"]:
@@ -706,7 +732,6 @@ Continue until comprehensive information gathered or maximum rounds reached."""
         else:
             logger.error(f"搜索失败: {result.get('error')}")
             return [], False
-
     async def select_phase(self, question: str, search_results: List[Dict], 
                           round_num: int = 1, max_rounds: int = 5, 
                           previous_knowledge: str = "",
@@ -1194,7 +1219,8 @@ Continue until comprehensive information gathered or maximum rounds reached."""
         return strategy
 
     async def execute_deepsearch_workflow(self, question: str, max_rounds: int = 5, 
-                                        num_results: int = 10, stream: bool = False):
+                                        num_results: int = 10, stream: bool = False,
+                                        search_mode: str = None):
         """
         执行完整的DeepSearch工作流
         
@@ -1203,6 +1229,7 @@ Continue until comprehensive information gathered or maximum rounds reached."""
             max_rounds: 最大搜索轮数
             num_results: 每轮搜索结果数
             stream: 是否流式返回
+            search_mode: 搜索模式 (single/flash/smart，None时使用默认配置)
             
         Returns:
             完整的DeepSearch执行结果
@@ -1216,8 +1243,15 @@ Continue until comprehensive information gathered or maximum rounds reached."""
             "start_time": datetime.now().isoformat()
         }
         
+        # 处理搜索模式配置
+        original_strategy = self.concurrent_search_strategy
+        if search_mode:
+            self.concurrent_search_strategy = search_mode
+            logger.info(f"[并发搜索] 临时设置搜索模式为: {search_mode}")
+        
         try:
             logger.info(f"开始DeepSearch工作流：{question[:50]}...")
+            logger.info(f"[搜索配置] 模式={self.concurrent_search_strategy}, 最大轮数={max_rounds}")
             
             # 新增：Agent制定整体搜索策略
             search_strategy = await self.plan_search_strategy(question)
@@ -1369,6 +1403,11 @@ Continue until comprehensive information gathered or maximum rounds reached."""
             else:
                 yield workflow_result
         finally:
+            # 恢复原来的搜索策略配置
+            self.concurrent_search_strategy = original_strategy
+            if search_mode:
+                logger.info(f"[并发搜索] 恢复搜索模式为: {original_strategy}")
+            
             # 清理clients
             await self._cleanup_clients()
     
@@ -1492,3 +1531,182 @@ Continue until comprehensive information gathered or maximum rounds reached."""
             return part1 + "\n\n...[中间内容已省略]...\n\n" + part2
         else:
             return part1
+
+    # ========== 并发搜索实现 ==========
+    
+    async def _concurrent_search_phase(self, query: str, num_results: int = 10) -> Tuple[List[Dict], bool]:
+        """并发搜索实现"""
+        config = self.concurrent_configs[self.concurrent_search_strategy]
+        
+        try:
+            # Step 1: 生成并发搜索查询
+            parallel_queries = await self._generate_parallel_queries(query, config)
+            logger.info(f"[并发搜索] 生成 {len(parallel_queries)} 个并发查询")
+            
+            # Step 2: 并发执行搜索
+            search_results = await self._execute_parallel_searches(parallel_queries, num_results)
+            
+            # Step 3: 合并和去重结果
+            merged_results = self._merge_search_results(search_results)
+            
+            logger.info(f"[并发搜索] 合并后得到 {len(merged_results)} 个结果")
+            return merged_results, True
+            
+        except Exception as e:
+            logger.error(f"[并发搜索] 失败，回退到单次搜索: {e}")
+            # 降级到原有搜索
+            return await self._original_search_phase(query, num_results)
+    
+    async def _generate_parallel_queries(self, query: str, config: Dict) -> List[str]:
+        """生成并发搜索查询"""
+        method = config.get("subquery_method", "expand")
+        max_parallel = config.get("max_parallel", 2)
+        
+        if method == "decompose":
+            # Flash模式：问题拆分
+            return await self._decompose_query(query, max_parallel)
+        elif method == "expand":
+            # Smart模式：查询扩展
+            return await self._expand_query(query, max_parallel)
+        else:
+            return [query]  # fallback
+    
+    async def _expand_query(self, query: str, max_parallel: int) -> List[str]:
+        """查询扩展策略 - 生成不同角度的搜索"""
+        # 获取当前时间上下文
+        time_context = self._get_time_context()
+        current_year = time_context.split('：')[1][:4] if '：' in time_context else "2024"
+        
+        expansions = [
+            query,  # 原查询
+            f"{query} {current_year} 最新",  # 时间扩展
+            f"{query} 深度分析 专业"  # 深度扩展
+        ]
+        
+        logger.info(f"[查询扩展] 原查询: {query}")
+        for i, exp in enumerate(expansions[:max_parallel]):
+            logger.info(f"[查询扩展] 扩展{i+1}: {exp}")
+        
+        return expansions[:max_parallel]
+    
+    async def _decompose_query(self, query: str, max_parallel: int) -> List[str]:
+        """问题拆分策略 - 使用LLM智能拆分"""
+        try:
+            # 复用现有的时间上下文
+            time_context = self._get_time_context()
+            
+            # 创建拆分prompt
+            decompose_prompt = f"""
+你是搜索专家，请将下面的问题拆分为{max_parallel}个可以并发搜索的子问题。
+
+原问题：{query}
+当前时间：{time_context}
+
+要求：
+1. 子问题之间相互独立，可并发搜索
+2. 子问题组合能完整回答原问题  
+3. 每个子问题都是具体的搜索查询
+4. 直接输出搜索查询，每行一个
+
+示例输出：
+特斯拉股价 2024 最新
+特斯拉财报业绩分析
+特斯拉市场预期评级
+"""
+            
+            # 复用现有的LLM调用逻辑
+            messages = [{"role": "user", "content": decompose_prompt}]
+            
+            response = await self.litellm_client.chat_completion(
+                messages=messages,
+                use_case="search",  # 复用现有use_case
+                temperature=0.3,
+                max_tokens=300
+            )
+            
+            # 解析子查询
+            subqueries = []
+            lines = response.choices[0].message.content.strip().split('\n')
+            for line in lines[:max_parallel]:
+                line = line.strip()
+                if line and not line.startswith('示例') and not line.startswith('要求'):
+                    # 清理可能的序号
+                    line = re.sub(r'^\d+[\.\)]\s*', '', line)
+                    if line:
+                        subqueries.append(line)
+            
+            if subqueries:
+                logger.info(f"[问题拆分] 原问题: {query}")
+                for i, sub in enumerate(subqueries):
+                    logger.info(f"[问题拆分] 子问题{i+1}: {sub}")
+                return subqueries
+            else:
+                logger.warning("[问题拆分] 拆分失败，使用查询扩展策略")
+                return await self._expand_query(query, max_parallel)
+                
+        except Exception as e:
+            logger.error(f"[问题拆分] 失败: {e}，回退到查询扩展")
+            return await self._expand_query(query, max_parallel)
+    
+    async def _execute_parallel_searches(self, queries: List[str], num_results: int) -> List[List[Dict]]:
+        """并发执行多个搜索"""
+        
+        async def single_search(query):
+            try:
+                # 复用原有的搜索逻辑
+                result = await self.serp_search(query, num_results)
+                if result["success"]:
+                    logger.info(f"[并发搜索] '{query}' 成功，获得 {len(result['results'])} 个结果")
+                    return result["results"]
+                else:
+                    logger.warning(f"[并发搜索] '{query}' 失败: {result.get('error')}")
+                    return []
+            except Exception as e:
+                logger.error(f"[并发搜索] '{query}' 异常: {e}")
+                return []
+        
+        # 并发执行所有搜索
+        tasks = [single_search(query) for query in queries]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        
+        # 过滤异常结果
+        valid_results = []
+        for i, result in enumerate(results):
+            if isinstance(result, Exception):
+                logger.error(f"[并发搜索] 查询 '{queries[i]}' 发生异常: {result}")
+                valid_results.append([])
+            else:
+                valid_results.append(result)
+        
+        return valid_results
+    
+    def _merge_search_results(self, search_results_list: List[List[Dict]]) -> List[Dict]:
+        """合并并去重搜索结果"""
+        all_results = []
+        seen_urls = set()
+        
+        # 按查询优先级合并（第一个查询优先级最高）
+        for i, results in enumerate(search_results_list):
+            logger.info(f"[结果合并] 处理第{i+1}个搜索结果集，包含 {len(results)} 个结果")
+            
+            for result in results:
+                url = result.get('url', '')
+                # 改进URL检查逻辑，处理空URL或无效URL的情况
+                if url and url != '无URL' and url not in seen_urls:
+                    seen_urls.add(url)
+                    # 为并发搜索的结果添加来源标记
+                    result['concurrent_source'] = i + 1
+                    all_results.append(result)
+                elif not url or url == '无URL':
+                    # 对于没有URL的结果，使用标题作为唯一性检查
+                    title = result.get('title', '')
+                    if title and title not in seen_urls:
+                        seen_urls.add(title)
+                        result['concurrent_source'] = i + 1
+                        all_results.append(result)
+        
+        # 限制总结果数，保持与原有行为一致
+        final_results = all_results[:20]
+        logger.info(f"[结果合并] 最终合并得到 {len(final_results)} 个去重结果")
+        
+        return final_results

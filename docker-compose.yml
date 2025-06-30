@@ -1,0 +1,78 @@
+version: '3.8'
+
+services:
+  deepsearch-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: deepsearch-api:latest
+    container_name: deepsearch-api
+    ports:
+      - "8000:8000"
+    environment:
+      # API Keys - 使用环境变量或.env文件
+      - BRIGHTDATA_API_KEY=${BRIGHTDATA_API_KEY}
+      - BRIGHTDATA_ZONE=${BRIGHTDATA_ZONE}
+      - FIRECRAWL_API_KEY=${FIRECRAWL_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      
+      # 服务配置
+      - LOG_LEVEL=info
+      - MAX_WORKERS=4
+      - TIMEOUT=300
+      
+    volumes:
+      # 挂载prompts目录，便于更新
+      - ./prompts:/app/prompts:ro
+      - ./logs:/app/logs
+      
+    restart: unless-stopped
+    
+    # 资源限制
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+        reservations:
+          cpus: '1'
+          memory: 2G
+          
+    # 健康检查
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # 可选：添加Redis用于缓存和速率限制
+  redis:
+    image: redis:7-alpine
+    container_name: deepsearch-redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    
+  # 可选：添加Nginx作为反向代理
+  nginx:
+    image: nginx:alpine
+    container_name: deepsearch-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - deepsearch-api
+    restart: unless-stopped
+
+volumes:
+  redis-data:
+
+networks:
+  default:
+    name: deepsearch-network
