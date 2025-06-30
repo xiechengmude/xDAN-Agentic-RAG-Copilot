@@ -1,10 +1,7 @@
 {
   "question_id": "market_research_1745567367_16",
-  "analysis_time": "2025-06-30T16:14:00.204510",
+  "analysis_time": "2025-06-30T17:57:22.677458",
   "success": false,
-  "error_analysis": "测试失败: object async_generator can't be used in 'await' expression",
-  "scores": null,
-  "recommendations": [
-    "修复错误后重新测试"
-  ]
+  "error": "'EnhancedLiteLLMClient' object has no attribute 'achat'",
+  "fallback_analysis": "LLM分析失败，需要手动分析"
 }

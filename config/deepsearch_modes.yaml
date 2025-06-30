@@ -1,0 +1,311 @@
+# DeepSearch模式配置文件
+# 版本: v1.3.0
+# 说明: 内部支持多种场景组合，对外暴露flash/deep两种模式
+
+# ========================================
+# 对外API模式映射
+# ========================================
+api_modes:
+  flash:
+    name: "Flash模式"
+    description: "快速高效，30-60秒响应"
+    internal_scenarios: 
+      - "quick_facts"      # 默认场景
+      - "news_realtime"    # 新闻实时场景
+      - "price_comparison" # 价格对比场景
+    
+  deep:
+    name: "Deep模式" 
+    description: "深度全面，2-5分钟分析"
+    internal_scenarios:
+      - "academic_research"  # 默认场景
+      - "investment_analysis" # 投资分析场景
+      - "policy_research"    # 政策研究场景
+
+# ========================================
+# 内部场景配置 (丰富的组合策略)
+# ========================================
+internal_scenarios:
+  
+  # ----- Flash模式内部场景 -----
+  quick_facts:
+    name: "快速事实查询"
+    max_rounds: 2
+    concurrent_strategy: "flash_decompose"
+    max_parallel: 3
+    subquery_method: "decompose"
+    timeout_ms: 30000
+    quality_weights:
+      authority: 0.35
+      relevance: 0.45
+      freshness: 0.20
+    optimization:
+      prefer_speed: true
+      aggressive_filtering: true
+      snippet_fallback_rate: 0.4
+      max_content_length: 8000
+    target_response_time: 45  # 秒
+    
+  news_realtime:
+    name: "新闻实时查询"
+    max_rounds: 2
+    concurrent_strategy: "flash_news"
+    max_parallel: 4  # 新闻场景增加并发
+    subquery_method: "news_angles"  # 专门的新闻角度分解
+    timeout_ms: 25000
+    quality_weights:
+      authority: 0.25  # 新闻场景降低权威性要求
+      relevance: 0.35
+      freshness: 0.40  # 大幅提高时效性权重
+    optimization:
+      prefer_speed: true
+      prefer_recent: true
+      snippet_fallback_rate: 0.5
+      max_content_length: 6000
+    target_response_time: 35
+    
+  price_comparison:
+    name: "价格对比查询"
+    max_rounds: 1  # 价格查询通常一轮就够
+    concurrent_strategy: "flash_price"
+    max_parallel: 3
+    subquery_method: "product_variants"
+    timeout_ms: 20000
+    quality_weights:
+      authority: 0.30
+      relevance: 0.50
+      freshness: 0.20
+    optimization:
+      prefer_speed: true
+      prefer_structured_data: true  # 优先表格数据
+      snippet_fallback_rate: 0.3
+      max_content_length: 5000
+    target_response_time: 30
+  
+  # ----- Deep模式内部场景 -----
+  academic_research:
+    name: "学术研究分析"
+    max_rounds: 8
+    concurrent_strategy: "deep_academic"
+    max_parallel: 2
+    subquery_method: "academic_expand"
+    timeout_ms: 60000
+    quality_weights:
+      authority: 0.60  # 学术场景高权威性要求
+      relevance: 0.25
+      freshness: 0.15
+    optimization:
+      prefer_depth: true
+      cross_validation: true
+      peer_review_bonus: 2
+      snippet_fallback_rate: 0.15
+      max_content_length: 25000
+    target_response_time: 200
+    
+  investment_analysis:
+    name: "投资分析研究"
+    max_rounds: 6
+    concurrent_strategy: "deep_financial"
+    max_parallel: 2
+    subquery_method: "financial_angles"
+    timeout_ms: 45000
+    quality_weights:
+      authority: 0.50
+      relevance: 0.30
+      freshness: 0.20
+    optimization:
+      prefer_depth: true
+      require_data: true  # 必须包含数据
+      cross_validation: true
+      snippet_fallback_rate: 0.20
+      max_content_length: 20000
+    target_response_time: 150
+    
+  policy_research:
+    name: "政策法规研究"  
+    max_rounds: 10  # 政策研究需要更多轮次
+    concurrent_strategy: "deep_policy"
+    max_parallel: 1  # 政策研究更谨慎，单线程
+    subquery_method: "policy_hierarchy"
+    timeout_ms: 90000
+    quality_weights:
+      authority: 0.70  # 政策研究最高权威性要求
+      relevance: 0.20
+      freshness: 0.10
+    optimization:
+      prefer_depth: true
+      prefer_official: true  # 优先官方来源
+      cross_validation: true
+      snippet_fallback_rate: 0.10
+      max_content_length: 30000
+    target_response_time: 300
+
+# ========================================
+# 并发策略定义
+# ========================================
+concurrent_strategies:
+  flash_decompose:
+    enabled: true
+    max_parallel: 3
+    subquery_method: "decompose"
+    merge_strategy: "quality_priority"
+    
+  flash_news:
+    enabled: true
+    max_parallel: 4
+    subquery_method: "news_angles"
+    merge_strategy: "freshness_priority"
+    
+  flash_price:
+    enabled: true  
+    max_parallel: 3
+    subquery_method: "product_variants"
+    merge_strategy: "data_priority"
+    
+  deep_academic:
+    enabled: true
+    max_parallel: 2
+    subquery_method: "academic_expand"
+    merge_strategy: "authority_priority"
+    
+  deep_financial:
+    enabled: true
+    max_parallel: 2  
+    subquery_method: "financial_angles"
+    merge_strategy: "validation_priority"
+    
+  deep_policy:
+    enabled: true
+    max_parallel: 1
+    subquery_method: "policy_hierarchy"
+    merge_strategy: "official_priority"
+
+# ========================================
+# 子查询方法定义
+# ========================================
+subquery_methods:
+  decompose:
+    name: "问题分解"
+    strategy: "llm_decompose"
+    max_subqueries: 3
+    
+  news_angles:
+    name: "新闻多角度"
+    strategy: "news_perspectives"
+    max_subqueries: 4
+    angles: ["事件本身", "影响分析", "各方反应", "后续发展"]
+    
+  product_variants:
+    name: "产品变体"
+    strategy: "product_comparison"
+    max_subqueries: 3
+    aspects: ["基础信息", "价格对比", "用户评价"]
+    
+  academic_expand:
+    name: "学术扩展"
+    strategy: "academic_depth"
+    max_subqueries: 2
+    focus: ["理论基础", "实证研究"]
+    
+  financial_angles:
+    name: "财务角度"
+    strategy: "financial_analysis"
+    max_subqueries: 2
+    dimensions: ["基本面分析", "市场表现"]
+    
+  policy_hierarchy:
+    name: "政策层级"
+    strategy: "policy_structure"
+    max_subqueries: 1
+    levels: ["法律法规", "实施细则", "执行情况"]
+
+# ========================================
+# 智能场景选择规则
+# ========================================
+scenario_selection:
+  flash:
+    # 基于问题关键词自动选择内部场景
+    quick_facts:
+      keywords: ["什么是", "如何", "多少", "哪个", "比较"]
+      question_length: [1, 20]  # 字数范围
+      
+    news_realtime:
+      keywords: ["最新", "今天", "刚刚", "新闻", "事件", "发生"]
+      time_sensitive: true
+      
+    price_comparison:
+      keywords: ["价格", "多少钱", "费用", "成本", "对比", "vs"]
+      has_product_names: true
+      
+  deep:
+    academic_research:
+      keywords: ["研究", "分析", "理论", "方法", "影响", "趋势"]
+      question_length: [20, 100]
+      
+    investment_analysis:
+      keywords: ["投资", "股票", "财务", "估值", "盈利", "风险"]
+      has_company_names: true
+      
+    policy_research:
+      keywords: ["政策", "法规", "条例", "规定", "监管", "合规"]
+      involves_government: true
+
+# ========================================
+# 质量控制配置
+# ========================================
+quality_control:
+  global:
+    min_content_length: 500
+    max_content_length: 30000
+    dedup_enabled: true
+    dedup_similarity_threshold: 0.9
+    
+  by_scenario:
+    quick_facts:
+      relevance_threshold: 0.6
+      quality_score_threshold: 0.5
+      
+    news_realtime:
+      relevance_threshold: 0.5
+      freshness_weight: 0.4
+      
+    academic_research:
+      relevance_threshold: 0.8
+      authority_min_score: 8
+      
+    investment_analysis:
+      relevance_threshold: 0.7
+      require_quantitative_data: true
+      
+    policy_research:
+      relevance_threshold: 0.9
+      authority_min_score: 9
+      prefer_official_domains: true
+
+# ========================================
+# 性能监控配置
+# ========================================
+performance_monitoring:
+  target_metrics:
+    flash:
+      response_time: 60  # 秒
+      success_rate: 0.9
+      user_satisfaction: 0.8
+      
+    deep:
+      response_time: 300  # 秒  
+      success_rate: 0.95
+      user_satisfaction: 0.9
+      
+  optimization_triggers:
+    response_time_exceeded:
+      action: "reduce_rounds"
+      threshold: 1.5  # 超过目标时间1.5倍时触发
+      
+    low_success_rate:
+      action: "increase_quality_threshold"
+      threshold: 0.8
+      
+    user_feedback_low:
+      action: "adjust_weights"
+      threshold: 0.7

@@ -15,11 +15,12 @@ from datetime import datetime
 from ..clients.brightdata_client import BrightDataAsyncClient
 from ..clients.firecrawl_client import FireCrawlAsyncClient
 from ..clients.enhanced_litellm_client import EnhancedLiteLLMClient
+from .search_strategy import search_strategy
 
 logger = logging.getLogger(__name__)
 
 # 硬编码配置 - 避免复杂的配置文件
-SEARCH_RESULTS = 8          # SERP搜索结果数
+SEARCH_RESULTS = 12         # SERP搜索结果数
 SELECT_URLS = 4             # 选择爬取的URL数
 CRAWL_TIMEOUT = 30          # 爬取超时秒数
 PARALLEL_CRAWL = 3          # 并发爬取数
@@ -139,31 +140,6 @@ class FlashSearchEngine:
         
         return url
     
-    def _enhance_question_with_time(self, question: str) -> str:
-        """
-        简化的时间感知处理，为问题添加时间上下文
-        
-        Args:
-            question: 原始问题
-            
-        Returns:
-            增强的问题
-        """
-        import re
-        from datetime import datetime
-        
-        # 检查是否包含时间关键词
-        time_keywords = ['最新', '最近', '今年', '2024', '2025', '当前', '现在']
-        has_time_context = any(keyword in question for keyword in time_keywords)
-        
-        if not has_time_context:
-            # 如果没有时间上下文，添加当前年份
-            current_year = datetime.now().year
-            enhanced_question = f"{question} {current_year}"
-            logger.debug(f"[时间感知] 添加时间上下文: {question} → {enhanced_question}")
-            return enhanced_question
-        
-        return question
     
     def _format_source_citation(self, content_item: Dict[str, Any], index: int) -> str:
         """
@@ -185,26 +161,34 @@ class FlashSearchEngine:
             return f"【来源{index}】{title}"
     
     
-    async def search(self, question: str) -> List[Dict[str, Any]]:
+    async def search(self, question: str, use_alternative_strategy: bool = False) -> List[Dict[str, Any]]:
         """
         快速SERP搜索
         
         Args:
             question: 用户问题
+            use_alternative_strategy: 是否使用备选搜索策略（用于重试）
             
         Returns:
             搜索结果列表，包含URL、标题、摘要
         """
-        logger.info(f"[Search] 开始搜索: {question[:50]}...")
+        logger.info(f"[Search] 开始搜索: {question[:50]}... (备选策略: {use_alternative_strategy})")
         start_time = time.time()
         
         try:
-            # 应用时间感知处理
-            enhanced_question = self._enhance_question_with_time(question)
+            # 使用独立的搜索策略模块进行优化
+            if use_alternative_strategy:
+                # 重试时使用备选策略
+                optimization_result = search_strategy.optimize_search_query_alternative(question)
+            else:
+                optimization_result = search_strategy.optimize_search_query(question)
+            optimized_question = optimization_result['optimized_question']
+            
+            logger.info(f"[搜索优化] {question} → {optimized_question}")
             
             # 使用BrightData进行搜索
             search_response = await self.bright_client.search(
-                query=enhanced_question,
+                query=optimized_question,
                 num_results=SEARCH_RESULTS,
                 country="CN"
             )
@@ -542,9 +526,17 @@ class FlashSearchEngine:
             
             # 2. 选择URL
             selected_urls = await self.select(question, search_results)
+            
+            # 如果第一次选择失败，尝试重新搜索（使用备选策略）
             if not selected_urls:
-                result["answer"] = "抱歉，未能选择到有效的信息源。"
-                return result
+                logger.warning("[FlashSearch] 第一次选择失败，尝试使用备选策略重新搜索")
+                search_results = await self.search(question, use_alternative_strategy=True)
+                if search_results:
+                    selected_urls = await self.select(question, search_results)
+                
+                if not selected_urls:
+                    result["answer"] = "抱歉，未能选择到有效的信息源。"
+                    return result
             
             # 3. 爬取内容
             crawl_results = await self.crawl(selected_urls, search_results)

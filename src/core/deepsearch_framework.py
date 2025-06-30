@@ -562,12 +562,14 @@ Continue until comprehensive information gathered or maximum rounds reached."""
                 "error": str(e)
             }
 
-    async def crawl_selected_urls_parallel(self, selected_urls: List[str]) -> List[Dict[str, Any]]:
+    async def crawl_selected_urls_parallel(self, selected_urls: List[str], 
+                                          search_results_mapping: Dict[str, Dict] = None) -> List[Dict[str, Any]]:
         """
-        并行爬取选定的网页内容 - 复用FireCrawl client
+        并行爬取选定的网页内容 - 复用FireCrawl client，支持摘要回退
         
         Args:
             selected_urls: 选定的URL列表
+            search_results_mapping: URL到搜索结果的映射，用于失败时的摘要回退
             
         Returns:
             爬取的内容列表
@@ -640,19 +642,57 @@ Continue until comprehensive information gathered or maximum rounds reached."""
                     "content_length": len(data.get('markdown', ''))
                 })
             else:
-                crawled_content.append({
-                    "url": result['url'],
+                # 失败时尝试使用搜索摘要回退
+                url = result['url']
+                fallback_content = {
+                    "url": url,
                     "success": False,
-                    "error": result.get('error', 'Unknown error')
-                })
+                    "error": result.get('error', 'Unknown error'),
+                    "has_snippet": False
+                }
+                
+                # 如果有搜索结果映射，尝试获取摘要
+                if search_results_mapping and url in search_results_mapping:
+                    search_item = search_results_mapping[url]
+                    snippet = search_item.get('snippet', '')
+                    title = search_item.get('title', '')
+                    
+                    if snippet:
+                        fallback_content.update({
+                            "snippet": snippet,
+                            "title": title,
+                            "has_snippet": True,
+                            "fallback_type": "search_snippet"
+                        })
+                        logger.info(f"[CRAWL] 📋 使用搜索摘要作为回退: {url}")
+                
+                crawled_content.append(fallback_content)
         
-        # 添加跳过的URL
+        # 添加跳过的URL，也尝试使用摘要
         for skipped_url in skipped_urls:
-            crawled_content.append({
+            fallback_content = {
                 "url": skipped_url,
                 "success": False,
-                "error": "Invalid URL for crawling (Google search page or relative path)"
-            })
+                "error": "Invalid URL for crawling (Google search page or relative path)",
+                "has_snippet": False
+            }
+            
+            # 对于被过滤的URL也尝试摘要回退
+            if search_results_mapping and skipped_url in search_results_mapping:
+                search_item = search_results_mapping[skipped_url]
+                snippet = search_item.get('snippet', '')
+                title = search_item.get('title', '')
+                
+                if snippet:
+                    fallback_content.update({
+                        "snippet": snippet,
+                        "title": title,
+                        "has_snippet": True,
+                        "fallback_type": "search_snippet"
+                    })
+                    logger.info(f"[CRAWL] 📋 为被过滤的URL使用搜索摘要: {skipped_url}")
+            
+            crawled_content.append(fallback_content)
         
         success_count = sum(1 for item in crawled_content if item.get("success"))
         total_urls = len(selected_urls)
@@ -698,11 +738,37 @@ Continue until comprehensive information gathered or maximum rounds reached."""
         
         for content_item in crawled_content:
             if not content_item.get("success"):
-                extracted_content.append({
-                    "url": content_item.get("url", "Unknown"),
-                    "extraction_success": False,
-                    "error": content_item.get("error", "Crawl failed")
-                })
+                # 检查是否有摘要可用作回退
+                if content_item.get("has_snippet"):
+                    # 使用摘要创建简化的提取内容
+                    snippet = content_item.get('snippet', '')
+                    title = content_item.get('title', '无标题')
+                    
+                    extracted_item = {
+                        "url": content_item.get("url", "Unknown"),
+                        "title": title,
+                        "extraction_success": True,
+                        "is_fallback": True,
+                        "fallback_type": "snippet",
+                        "extracted_content": f"""## 摘要信息
+来源：{title}
+
+{snippet}
+
+*注：由于无法访问完整内容（{content_item.get('error', '未知错误')}），以上信息来自搜索结果摘要*""",
+                        "original_length": len(snippet),
+                        "extraction_ratio": 1.0,  # 摘要已经是提取后的内容
+                        "error": content_item.get("error", "")
+                    }
+                    extracted_content.append(extracted_item)
+                    logger.info(f"[Extract] 📋 使用摘要回退: {content_item.get('url')}")
+                else:
+                    # 完全失败，没有摘要可用
+                    extracted_content.append({
+                        "url": content_item.get("url", "Unknown"),
+                        "extraction_success": False,
+                        "error": content_item.get("error", "Crawl failed, no snippet available")
+                    })
                 continue
                 
             try:
@@ -1040,15 +1106,19 @@ Continue until comprehensive information gathered or maximum rounds reached."""
                     title = item.get("title", f"来源{i}")
                     url = item.get("url", "")
                     content = item.get("extracted_content", "")
+                    is_fallback = item.get("is_fallback", False)
                     
-                    source_info = f"【来源{i}】{title}\n网址：{url}\n内容：{content}"
+                    # 根据是否是回退内容调整标注
+                    source_type_label = "-摘要" if is_fallback else ""
+                    source_info = f"【来源{i}{source_type_label}】{title}\n网址：{url}\n内容：{content}"
                     sources_info.append(source_info)
                     
                     valid_sources.append({
                         "id": i,
                         "title": title,
                         "url": url,
-                        "content": content
+                        "content": content,
+                        "source_type": "snippet" if is_fallback else "full"
                     })
             
             if not valid_sources:
@@ -1450,14 +1520,27 @@ Continue until comprehensive information gathered or maximum rounds reached."""
                     logger.info(f"[限制] 本轮选择了{len(important_url_ids)}个URL，限制为{self.max_crawl_urls}个")
                 
                 selected_urls = []
+                search_results_mapping = {}  # 创建URL到搜索结果的映射
                 for url_id in limited_url_ids:
                     if url_id in url_mapping:
-                        selected_urls.append(url_mapping[url_id].get("link", ""))
+                        url_info = url_mapping[url_id]
+                        url = url_info.get("link", "")
+                        selected_urls.append(url)
+                        # 保存搜索结果信息用于回退
+                        search_results_mapping[url] = {
+                            "title": url_info.get("title", ""),
+                            "snippet": url_info.get("snippet", ""),
+                            "displayed_link": url_info.get("displayed_link", ""),
+                            "position": url_info.get("position", 0)
+                        }
                 
                 extracted_content = []
                 if selected_urls:
-                    # 使用并行爬取
-                    crawled_content = await self.crawl_selected_urls_parallel(selected_urls)
+                    # 使用并行爬取，传入搜索结果映射
+                    crawled_content = await self.crawl_selected_urls_parallel(
+                        selected_urls, 
+                        search_results_mapping=search_results_mapping
+                    )
                     
                     # 4. Extract阶段：提取重要内容
                     task_context = f"已完成{round_num}轮搜索，正在深度分析相关内容"
