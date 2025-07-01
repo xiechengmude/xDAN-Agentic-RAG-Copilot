@@ -1,0 +1,87 @@
+# FlashSearch 服务层 Docker Compose 配置
+
+version: '3.8'
+
+services:
+  # FastAPI REST API 服务器
+  flashsearch-api:
+    build:
+      context: ..
+      dockerfile: server/Dockerfile.api
+    ports:
+      - "8000:8000"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8000
+      - LOG_LEVEL=info
+      - WORKERS=2
+    env_file:
+      - ../.env
+    volumes:
+      - ../src:/app/src:ro
+      - ../.env:/app/.env:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - flashsearch-network
+
+  # FastMCP HTTP 服务器  
+  flashsearch-mcp:
+    build:
+      context: ..
+      dockerfile: server/Dockerfile.mcp
+    ports:
+      - "9000:9000"
+    environment:
+      - TRANSPORT=http
+      - HOST=0.0.0.0
+      - PORT=9000
+      - LOG_LEVEL=info
+    env_file:
+      - ../.env
+    volumes:
+      - ../src:/app/src:ro
+      - ../.env:/app/.env:ro
+    restart: unless-stopped
+    networks:
+      - flashsearch-network
+
+  # Redis (可选 - 用于缓存)
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    networks:
+      - flashsearch-network
+
+  # Nginx 反向代理 (可选)
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - flashsearch-api
+      - flashsearch-mcp
+    restart: unless-stopped
+    networks:
+      - flashsearch-network
+
+networks:
+  flashsearch-network:
+    driver: bridge
+
+volumes:
+  redis-data:
+    driver: local
