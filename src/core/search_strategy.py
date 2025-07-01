@@ -195,35 +195,45 @@ class SearchStrategy:
         question_lower = question.lower()
         operators = []
         
+        # 检查是否已经包含算子（保留用户指定的算子）
+        has_site = 'site:' in question_lower
+        has_filetype = 'filetype:' in question_lower
+        has_inurl = 'inurl:' in question_lower
+        
         # 站点限定
-        if analysis['detected_domain'] == 'policy':
-            operators.append("site:gov.cn")
-        elif analysis['detected_domain'] == 'academic':
-            operators.append("(site:edu.cn OR site:org)")
-        elif analysis['detected_domain'] == 'technology':
-            operators.append("(site:docs OR site:developer OR site:github.com)")
-        elif analysis['detected_domain'] == 'news':
-            # 构建新闻网站限定
-            news_sites = []
-            news_config = self.domain_config['news']['authority_sites']
-            # 优先使用中文权威媒体
-            news_sites.extend([f"site:{site}" for site in news_config['cn'][:3]])
-            # 添加国际媒体
-            news_sites.extend([f"site:{site}" for site in news_config['us'][:2]])
-            # 如果是财经相关，添加财经媒体
-            if any(kw in question_lower for kw in ['财经', '股票', '金融', '市场']):
-                news_sites.extend([f"site:{site}" for site in news_config['finance'][:2]])
-            if news_sites:
-                operators.append(f"({' OR '.join(news_sites[:5])})")  # 限制最多5个网站
+        if not has_site:  # 只有在用户没有指定site时才添加
+            if analysis['detected_domain'] == 'policy':
+                operators.append("site:gov.cn")
+            elif analysis['detected_domain'] == 'academic':
+                operators.append("(site:edu.cn OR site:org)")
+            elif analysis['detected_domain'] == 'technology':
+                operators.append("(site:docs OR site:developer OR site:github.com)")
+            elif analysis['detected_domain'] == 'news':
+                # 构建新闻网站限定
+                news_sites = []
+                news_config = self.domain_config['news']['authority_sites']
+                # 优先使用中文权威媒体
+                news_sites.extend([f"site:{site}" for site in news_config['cn'][:3]])
+                # 添加国际媒体
+                news_sites.extend([f"site:{site}" for site in news_config['us'][:2]])
+                # 如果是财经相关，添加财经媒体
+                if any(kw in question_lower for kw in ['财经', '股票', '金融', '市场']):
+                    news_sites.extend([f"site:{site}" for site in news_config['finance'][:2]])
+                if news_sites:
+                    operators.append(f"({' OR '.join(news_sites[:5])})")  # 限制最多5个网站
         
         # 时间限定
-        if any(kw in question_lower for kw in ['最新', '2024', '2025']) and not analysis['has_time_context']:
+        if any(kw in question_lower for kw in ['最新', '最近', '今年', '本月', '上季度']) and not analysis['has_time_context']:
             current_year = datetime.now().year
             operators.append(f"after:{current_year-1}")
         
         # 文件类型限定
-        if analysis['detected_domain'] in ['finance', 'academic'] and analysis['complexity'] == 'complex':
-            operators.append("filetype:pdf")
+        if not has_filetype:  # 只有在用户没有指定filetype时才添加
+            # 检测PDF需求
+            if 'pdf' in question_lower or 'PDF' in question:
+                operators.append("filetype:pdf")
+            elif analysis['detected_domain'] in ['finance', 'academic'] and analysis['complexity'] == 'complex':
+                operators.append("filetype:pdf")
         
         # 精确匹配（对于特定术语）
         if analysis['detected_domain'] == 'finance' and any(kw in question_lower for kw in ['财报', 'roe']):
@@ -257,20 +267,47 @@ class SearchStrategy:
         step2_domain = self.enhance_with_domain_keywords(step1_time, analysis)
         step3_operators = self.add_search_operators(step2_domain, analysis)
         
+        # 3. 生成适合BrightData的查询（不使用Google特定算子）
+        # 移除可能不兼容的算子，保留关键词
+        brightdata_query = self._prepare_for_brightdata(step2_domain, analysis)
+        
         result = {
             'original_question': question,
-            'optimized_question': step3_operators,
+            'optimized_question': brightdata_query,  # 使用BrightData兼容的查询
             'analysis': analysis,
             'optimization_steps': {
                 'time_enhanced': step1_time,
                 'domain_enhanced': step2_domain,
-                'operator_enhanced': step3_operators
+                'operator_enhanced': step3_operators,
+                'brightdata_ready': brightdata_query
             }
         }
         
-        logger.info(f"[搜索优化完成] {question} → {step3_operators}")
+        logger.info(f"[搜索优化完成] {question} → {brightdata_query}")
         
         return result
+    
+    def _prepare_for_brightdata(self, query: str, analysis: Dict[str, Any]) -> str:
+        """
+        准备适合BrightData的查询
+        移除可能不兼容的算子，确保查询可靠性
+        """
+        # BrightData通过Google搜索，但某些算子可能不稳定
+        # 策略：使用关键词而非算子
+        
+        # 移除filetype等算子，保留为关键词形式
+        if 'filetype:pdf' in query:
+            query = query.replace('filetype:pdf', 'PDF 报告')
+        
+        # 移除after/before算子（如果存在）
+        import re
+        query = re.sub(r'after:\d{4}-\d{2}-\d{2}', '', query)
+        query = re.sub(r'before:\d{4}-\d{2}-\d{2}', '', query)
+        
+        # 清理多余空格
+        query = ' '.join(query.split())
+        
+        return query
     
     def optimize_search_query_alternative(self, question: str) -> Dict[str, Any]:
         """

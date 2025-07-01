@@ -47,7 +47,15 @@ class FlashSearchEngine:
         if not firecrawl_api_key:
             raise ValueError("需要设置FIRECRAWL_API_KEY环境变量")
         
-        self.bright_client = BrightDataAsyncClient(api_key=bright_api_key)
+        # 获取超时配置
+        bright_timeout = int(os.getenv('BRIGHTDATA_TIMEOUT', '60'))  # 默认60秒
+        bright_zone = os.getenv('BRIGHTDATA_ZONE', 'xdan_search_searp')
+        
+        self.bright_client = BrightDataAsyncClient(
+            api_key=bright_api_key,
+            zone=bright_zone,
+            timeout=bright_timeout
+        )
         self.crawl_client = FireCrawlAsyncClient(api_key=firecrawl_api_key)
         self.llm_client = EnhancedLiteLLMClient()
         

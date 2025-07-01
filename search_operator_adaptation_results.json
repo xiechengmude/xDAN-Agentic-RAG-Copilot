@@ -1,0 +1,338 @@
+{
+  "test_time": "2025-07-01T07:49:30.633089",
+  "test_cases": 10,
+  "results": [
+    {
+      "id": 1,
+      "category": "时间敏感+文件类型",
+      "question": "特斯拉最近季度财报PDF",
+      "original_optimized": "filetype:pdf 特斯拉最近季度财报PDF 年报",
+      "brightdata_adapted": "特斯拉最近季度财报PDF 年报",
+      "adaptation_analysis": {
+        "operators_removed": [
+          "filetype:pdf"
+        ],
+        "operators_kept": [],
+        "keywords_added": [
+          "PDF转换"
+        ],
+        "adaptation_correct": true
+      },
+      "test_points_passed": "3/3",
+      "time_aware_result": {
+        "original": "特斯拉最近季度财报PDF",
+        "brightdata": {
+          "query": "特斯拉最近季度财报PDF 2025",
+          "url_params": {
+            "tbs": "qdr:y"
+          },
+          "search_options": {}
+        },
+        "universal": "特斯拉最近季度财报PDF 2025 (\"2025年第2季度\" OR \"2025年Q2\")",
+        "search_url": "https://www.google.com/search?q=%E7%89%B9%E6%96%AF%E6%8B%89%E6%9C%80%E8%BF%91%E5%AD%A3%E5%BA%A6%E8%B4%A2%E6%8A%A5PDF+2025&tbs=qdr:y&num=12",
+        "time_range": {
+          "start_str": "2025-04-02",
+          "end_str": "2025-07-01",
+          "description": "最近3个月"
+        }
+      }
+    },
+    {
+      "id": 2,
+      "category": "学术搜索+时间限定",
+      "question": "今年人工智能论文site:arxiv.org",
+      "original_optimized": "filetype:pdf 今年人工智能论文site:arxiv.org 报告",
+      "brightdata_adapted": "今年人工智能论文site:arxiv.org 报告",
+      "adaptation_analysis": {
+        "operators_removed": [],
+        "operators_kept": [
+          "site:"
+        ],
+        "keywords_added": [],
+        "adaptation_correct": true
+      },
+      "test_points_passed": "3/3",
+      "time_aware_result": {
+        "original": "今年人工智能论文site:arxiv.org",
+        "brightdata": {
+          "query": "今年人工智能论文site:arxiv.org 2025",
+          "url_params": {
+            "tbs": "qdr:y"
+          },
+          "search_options": {}
+        },
+        "universal": "今年人工智能论文site:arxiv.org 2025",
+        "search_url": "https://www.google.com/search?q=%E4%BB%8A%E5%B9%B4%E4%BA%BA%E5%B7%A5%E6%99%BA%E8%83%BD%E8%AE%BA%E6%96%87site%3Aarxiv.org+2025&tbs=qdr:y&num=12",
+        "time_range": {
+          "start_str": "2025-01-01",
+          "end_str": "2025-07-01",
+          "description": "今年至今"
+        }
+      }
+    },
+    {
+      "id": 3,
+      "category": "新闻搜索+最新",
+      "question": "OpenAI最新发布会视频inurl:youtube",
+      "original_optimized": "OpenAI最新发布会视频inurl:youtube",
+      "brightdata_adapted": "OpenAI最新发布会视频inurl:youtube",
+      "adaptation_analysis": {
+        "operators_removed": [],
+        "operators_kept": [
+          "inurl:"
+        ],
+        "keywords_added": [],
+        "adaptation_correct": true
+      },
+      "test_points_passed": "3/3",
+      "time_aware_result": {
+        "original": "OpenAI最新发布会视频inurl:youtube",
+        "brightdata": {
+          "query": "OpenAI最新发布会视频inurl:youtube 2025",
+          "url_params": {
+            "tbs": "qdr:m"
+          },
+          "search_options": {}
+        },
+        "universal": "OpenAI最新发布会视频inurl:youtube 2025",
+        "search_url": "https://www.google.com/search?q=OpenAI%E6%9C%80%E6%96%B0%E5%8F%91%E5%B8%83%E4%BC%9A%E8%A7%86%E9%A2%91inurl%3Ayoutube+2025&tbs=qdr:m&num=12",
+        "time_range": {
+          "start_str": "2025-06-01",
+          "end_str": "2025-07-01",
+          "description": "最近1个月"
+        }
+      }
+    },
+    {
+      "id": 4,
+      "category": "精确匹配+时间",
+      "question": "\"比亚迪2025年第二季度\"财务数据",
+      "original_optimized": "\"比亚迪2025年第二季度\"财务数据 年报",
+      "brightdata_adapted": "\"比亚迪2025年第二季度\"财务数据 年报",
+      "adaptation_analysis": {
+        "operators_removed": [],
+        "operators_kept": [],
+        "keywords_added": [
+          "时间关键词"
+        ],
+        "adaptation_correct": true
+      },
+      "test_points_passed": "3/3",
+      "time_aware_result": {
+        "original": "\"比亚迪2025年第二季度\"财务数据",
+        "brightdata": {
+          "query": "\"比亚迪2025年第二季度\"财务数据 2025 2025Q2",
+          "url_params": {
+            "tbs": "qdr:y"
+          },
+          "search_options": {}
+        },
+        "universal": "\"比亚迪2025年第二季度\"财务数据 2025 2025Q2",
+        "search_url": "https://www.google.com/search?q=%22%E6%AF%94%E4%BA%9A%E8%BF%AA2025%E5%B9%B4%E7%AC%AC%E4%BA%8C%E5%AD%A3%E5%BA%A6%22%E8%B4%A2%E5%8A%A1%E6%95%B0%E6%8D%AE+2025+2025Q2&tbs=qdr:y&num=12",
+        "time_range": {
+          "start_str": "2025-04-01",
+          "end_str": "2025-06-30",
+          "description": "第二季度"
+        }
+      }
+    },
+    {
+      "id": 5,
+      "category": "排除词+文件类型",
+      "question": "Python教程 -广告 filetype:pdf",
+      "original_optimized": "(site:docs OR site:developer OR site:github.com) Python教程 -广告 filetype:pdf 2025 官方文档",
+      "brightdata_adapted": "Python教程 -广告 PDF 报告 2025 官方文档",
+      "adaptation_analysis": {
+        "operators_removed": [
+          "filetype:pdf"
+        ],
+        "operators_kept": [
+          "-"
+        ],
+        "keywords_added": [
+          "PDF转换",
+          "时间关键词"
+        ],
+        "adaptation_correct": true
+      },
+      "test_points_passed": "3/3",
+      "time_aware_result": {
+        "original": "Python教程 -广告 filetype:pdf",
+        "brightdata": {
+          "query": "Python教程 -广告 filetype:pdf",
+          "url_params": {},
+          "search_options": {}
+        },
+        "universal": "Python教程 -广告 filetype:pdf",
+        "search_url": "https://www.google.com/search?q=Python%E6%95%99%E7%A8%8B+-%E5%B9%BF%E5%91%8A+filetype%3Apdf&num=12",
+        "time_range": null
+      }
+    },
+    {
+      "id": 6,
+      "category": "OR逻辑+时间",
+      "question": "（ChatGPT OR Claude）最近更新",
+      "original_optimized": "（ChatGPT OR Claude）最近更新",
+      "brightdata_adapted": "（ChatGPT OR Claude）最近更新",
+      "adaptation_analysis": {
+        "operators_removed": [],
+        "operators_kept": [],
+        "keywords_added": [],
+        "adaptation_correct": true
+      },
+      "test_points_passed": "3/3",
+      "time_aware_result": {
+        "original": "（ChatGPT OR Claude）最近更新",
+        "brightdata": {
+          "query": "（ChatGPT OR Claude）最近更新 2025",
+          "url_params": {
+            "tbs": "qdr:y"
+          },
+          "search_options": {}
+        },
+        "universal": "（ChatGPT OR Claude）最近更新 2025",
+        "search_url": "https://www.google.com/search?q=%EF%BC%88ChatGPT+OR+Claude%EF%BC%89%E6%9C%80%E8%BF%91%E6%9B%B4%E6%96%B0+2025&tbs=qdr:y&num=12",
+        "time_range": {
+          "start_str": "2025-04-02",
+          "end_str": "2025-07-01",
+          "description": "最近3个月"
+        }
+      }
+    },
+    {
+      "id": 7,
+      "category": "通配符+站点",
+      "question": "site:*.edu.cn 量子计算研究",
+      "original_optimized": "site:*.edu.cn 量子计算研究 2025 报告",
+      "brightdata_adapted": "site:*.edu.cn 量子计算研究 2025 报告",
+      "adaptation_analysis": {
+        "operators_removed": [],
+        "operators_kept": [],
+        "keywords_added": [
+          "时间关键词"
+        ],
+        "adaptation_correct": true
+      },
+      "test_points_passed": "3/3",
+      "time_aware_result": {
+        "original": "site:*.edu.cn 量子计算研究",
+        "brightdata": {
+          "query": "site:*.edu.cn 量子计算研究",
+          "url_params": {},
+          "search_options": {}
+        },
+        "universal": "site:*.edu.cn 量子计算研究",
+        "search_url": "https://www.google.com/search?q=site%3A%2A.edu.cn+%E9%87%8F%E5%AD%90%E8%AE%A1%E7%AE%97%E7%A0%94%E7%A9%B6&num=12",
+        "time_range": null
+      }
+    },
+    {
+      "id": 8,
+      "category": "数值范围",
+      "question": "特斯拉股价 $100..$200 本月",
+      "original_optimized": "after:2024 特斯拉股价 $100..$200 本月 2025 年报",
+      "brightdata_adapted": "特斯拉股价 $100..$200 本月 2025 年报",
+      "adaptation_analysis": {
+        "operators_removed": [
+          "after:"
+        ],
+        "operators_kept": [],
+        "keywords_added": [
+          "时间关键词"
+        ],
+        "adaptation_correct": true
+      },
+      "test_points_passed": "3/3",
+      "time_aware_result": {
+        "original": "特斯拉股价 $100..$200 本月",
+        "brightdata": {
+          "query": "特斯拉股价 $100..$200 本月 2025 2025年7月",
+          "url_params": {
+            "tbs": "qdr:d"
+          },
+          "search_options": {}
+        },
+        "universal": "特斯拉股价 $100..$200 本月 2025 2025年7月",
+        "search_url": "https://www.google.com/search?q=%E7%89%B9%E6%96%AF%E6%8B%89%E8%82%A1%E4%BB%B7+%24100..%24200+%E6%9C%AC%E6%9C%88+2025+2025%E5%B9%B47%E6%9C%88&tbs=qdr:d&num=12",
+        "time_range": {
+          "start_str": "2025-07-01",
+          "end_str": "2025-07-31",
+          "description": "本月"
+        }
+      }
+    },
+    {
+      "id": 9,
+      "category": "复合时间+多算子",
+      "question": "上季度苹果财报 site:apple.com filetype:pdf",
+      "original_optimized": "after:2024 上季度苹果财报 site:apple.com filetype:pdf 2025 年报",
+      "brightdata_adapted": "上季度苹果财报 site:apple.com PDF 报告 2025 年报",
+      "adaptation_analysis": {
+        "operators_removed": [
+          "filetype:pdf"
+        ],
+        "operators_kept": [
+          "site:"
+        ],
+        "keywords_added": [
+          "PDF转换",
+          "时间关键词"
+        ],
+        "adaptation_correct": true
+      },
+      "test_points_passed": "3/3",
+      "time_aware_result": {
+        "original": "上季度苹果财报 site:apple.com filetype:pdf",
+        "brightdata": {
+          "query": "上季度苹果财报 site:apple.com filetype:pdf 2025 2025Q2",
+          "url_params": {
+            "tbs": "qdr:y"
+          },
+          "search_options": {}
+        },
+        "universal": "上季度苹果财报 site:apple.com filetype:pdf 2025 2025Q2",
+        "search_url": "https://www.google.com/search?q=%E4%B8%8A%E5%AD%A3%E5%BA%A6%E8%8B%B9%E6%9E%9C%E8%B4%A2%E6%8A%A5+site%3Aapple.com+filetype%3Apdf+2025+2025Q2&tbs=qdr:y&num=12",
+        "time_range": {
+          "start_str": "2025-04-01",
+          "end_str": "2025-06-30",
+          "description": "上季度"
+        }
+      }
+    },
+    {
+      "id": 10,
+      "category": "中文时间+排除",
+      "question": "近期新能源汽车销量 -特斯拉 -比亚迪",
+      "original_optimized": "近期新能源汽车销量 -特斯拉 -比亚迪 2025",
+      "brightdata_adapted": "近期新能源汽车销量 -特斯拉 -比亚迪 2025",
+      "adaptation_analysis": {
+        "operators_removed": [],
+        "operators_kept": [
+          "-"
+        ],
+        "keywords_added": [
+          "时间关键词"
+        ],
+        "adaptation_correct": true
+      },
+      "test_points_passed": "3/3",
+      "time_aware_result": {
+        "original": "近期新能源汽车销量 -特斯拉 -比亚迪",
+        "brightdata": {
+          "query": "近期新能源汽车销量 -特斯拉 -比亚迪 2025",
+          "url_params": {
+            "tbs": "qdr:y"
+          },
+          "search_options": {}
+        },
+        "universal": "近期新能源汽车销量 -特斯拉 -比亚迪 2025",
+        "search_url": "https://www.google.com/search?q=%E8%BF%91%E6%9C%9F%E6%96%B0%E8%83%BD%E6%BA%90%E6%B1%BD%E8%BD%A6%E9%94%80%E9%87%8F+-%E7%89%B9%E6%96%AF%E6%8B%89+-%E6%AF%94%E4%BA%9A%E8%BF%AA+2025&tbs=qdr:y&num=12",
+        "time_range": {
+          "start_str": "2025-01-02",
+          "end_str": "2025-07-01",
+          "description": "最近半年"
+        }
+      }
+    }
+  ]
+}

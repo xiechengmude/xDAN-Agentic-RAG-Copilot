@@ -1,0 +1,497 @@
+{
+  "test_time": "2025-07-01T00:57:15.942137",
+  "summary": {
+    "total_questions": 10,
+    "total_duration": 18.04436492919922,
+    "avg_duration": 1.804436492919922,
+    "avg_llm_calls": 2.0,
+    "avg_coverage": 0.9166666666666667
+  },
+  "category_stats": {
+    "财务分析": 0.75,
+    "技术新闻": 1.0,
+    "市场研究": 1.0,
+    "学术研究": 1.0,
+    "健康医疗": 1.0,
+    "技术教程": 1.0,
+    "环境科学": 0.6666666666666666,
+    "金融市场": 1.0,
+    "人工智能": 1.0,
+    "产业分析": 0.75
+  },
+  "detailed_results": [
+    {
+      "question": "比亚迪2024年第三季度财报营收和利润是多少",
+      "answer": "根据搜索到的信息，比亚迪2024年第三季度财报关键数据如下：\n\n**财务表现：**\n- 营业收入：2011.25亿元，同比增长24%\n- 归母净利润：116.07亿元，同比增长11.5%\n- 毛利率：21.9%，环比提升1.4个百分点\n\n**业务亮点：**\n- 新能源汽车销量达110万辆，同比大幅增长45%\n- 海外市场持续扩张，收入占比提升至15%\n- 储能业务表现强劲，收入同比增长60%\n\n比亚迪第三季度业绩表现强劲，在新能源汽车市场保持领先地位，同时积极拓展海外市场和储能业务，展现出良好的增长势头。\n\n信息来源：财经新闻网站、公司财报",
+      "sources": [
+        {
+          "url": "https://finance.sina.com.cn/byd-q3-2024",
+          "title": "页面标题 - byd-q3-2024",
+          "content": "\n比亚迪2024年第三季度财报详细数据：\n\n1. 财务指标：\n- 营业收入：2011.25亿元，同比增长24%\n- 归母净利润：116.07亿元，同比增长11.5%\n- 毛利率：21.9%，环比提升1.4个百分点\n- 经营活动现金流：526.7亿元\n\n2. 业务亮点：\n- 新能源汽车销量110万辆，同比增长45%\n- 海外市场收入占比达到15%\n- 储能业务收入同比增长60%\n\n3. 展望：\n公司预计第四季度将保持强劲增长势头，全年销量目标400万辆。\n",
+          "is_fallback": false
+        },
+        {
+          "url": "https://www.yicai.com/news/byd-analysis",
+          "title": "搜索摘要",
+          "content": "这是搜索结果的摘要信息...",
+          "is_fallback": true
+        },
+        {
+          "url": "https://example.com/result-3",
+          "title": "搜索摘要",
+          "content": "这是搜索结果的摘要信息...",
+          "is_fallback": true
+        },
+        {
+          "url": "https://example.com/result-4",
+          "title": "搜索摘要",
+          "content": "这是搜索结果的摘要信息...",
+          "is_fallback": true
+        }
+      ],
+      "stats": {
+        "search_rounds": 1,
+        "llm_calls": 2,
+        "selected_urls": 4,
+        "crawled_sources": 4,
+        "total_duration": 1.8057141304016113
+      },
+      "test_info": {
+        "id": 1,
+        "category": "财务分析",
+        "key_points_coverage": 0.75,
+        "covered_points": [
+          "利润",
+          "第三季度",
+          "2024"
+        ]
+      }
+    },
+    {
+      "question": "OpenAI最新发布的o3模型有什么特点",
+      "answer": "OpenAI最新发布的o3模型具有以下主要特点：\n\n**技术创新：**\n1. 增强的思维链(Chain-of-Thought)推理能力\n2. 多步骤问题分解和规划能力\n3. 自我纠错和验证机制\n\n**性能提升：**\n- 数学问题准确率达92%（相比o1模型的75%）\n- 编程任务成功率88%（相比o1模型的71%）\n- 科学推理准确率85%（相比o1模型的68%）\n\n**应用优势：**\no3模型特别适合处理复杂的推理任务，包括数学证明、高级编程、科学研究辅助等场景。其强大的多步骤推理能力使其在解决需要深度思考的问题上表现出色。\n\n信息来源：OpenAI官方博客、技术论文",
+      "sources": [
+        {
+          "url": "https://openai.com/blog/o3-model",
+          "title": "页面标题 - o3-model",
+          "content": "\nOpenAI o3模型技术特点：\n\n1. 核心创新：\n- 增强的思维链(Chain-of-Thought)推理\n- 多步骤问题分解能力\n- 自我纠错机制\n\n2. 性能提升：\n- 数学问题准确率：92% (vs o1的75%)\n- 编程任务成功率：88% (vs o1的71%)\n- 科学推理准确率：85% (vs o1的68%)\n\n3. 应用场景：\n- 复杂数学证明\n- 高级编程任务\n- 科学研究辅助\n- 多步骤规划\n",
+          "is_fallback": false
+        },
+        {
+          "url": "https://arxiv.org/papers/o3-technical",
+          "title": "搜索摘要",
+          "content": "这是搜索结果的摘要信息...",
+          "is_fallback": true
+        },
+        {
+          "url": "https://example.com/result-3",
+          "title": "搜索摘要",
+          "content": "这是搜索结果的摘要信息...",
+          "is_fallback": true
+        },
+        {
+          "url": "https://example.com/result-4",
+          "title": "搜索摘要",
+          "content": "这是搜索结果的摘要信息...",
+          "is_fallback": true
+        }
+      ],
+      "stats": {
+        "search_rounds": 1,
+        "llm_calls": 2,
+        "selected_urls": 4,
+        "crawled_sources": 4,
+        "total_duration": 1.8036279678344727
+      },
+      "test_info": {
+        "id": 2,
+        "category": "技术新闻",
+        "key_points_coverage": 1.0,
+        "covered_points": [
+          "o3模型",
+          "特点",
+          "OpenAI",
+          "发布"
+        ]
+      }
+    },
+    {
+      "question": "2024年中国新能源汽车市场份额排名",
+      "answer": "根据搜索到的信息，关于\"2024年中国新能源汽车市场份额排名\"的回答如下：\n\n搜索到了4个相关信息源，涵盖了您查询的主要方面。由于这是模拟测试，具体内容需要通过真实API获取更详细的信息。\n\n测试显示Flash S3搜索引擎的核心功能运行正常：\n- 并发搜索策略有效\n- S3智能评估正确运行\n- 内容爬取和回退机制正常\n- 答案生成逻辑完整\n\n信息来源：模拟搜索结果",
+      "sources": [
+        {
+          "url": "https://www.caam.org.cn/ev-market-2024",
+          "title": "搜索摘要",
+          "content": "这是搜索结果的摘要信息...",
+          "is_fallback": true
+        },
+        {
+          "url": "https://example.com/result-2",
+          "title": "搜索摘要",
+          "content": "这是搜索结果的摘要信息...",
+          "is_fallback": true
+        },
+        {
+          "url": "https://example.com/result-3",
+          "title": "搜索摘要",
+          "content": "这是搜索结果的摘要信息...",
+          "is_fallback": true
+        },
+        {
+          "url": "https://example.com/result-4",
+          "title": "搜索摘要",
+          "content": "这是搜索结果的摘要信息...",
+          "is_fallback": true
+        }
+      ],
+      "stats": {
+        "search_rounds": 1,
+        "llm_calls": 2,
+        "selected_urls": 4,
+        "crawled_sources": 4,
+        "total_duration": 1.8044180870056152
+      },
+      "test_info": {
+        "id": 3,
+        "category": "市场研究",
+        "key_points_coverage": 1.0,
+        "covered_points": [
+          "新能源汽车",
+          "市场份额",
+          "排名",
+          "2024"
+        ]
+      }
+    },
+    {
+      "question": "量子计算在密码学领域的最新进展",
+      "answer": "根据搜索到的信息，关于\"量子计算在密码学领域的最新进展\"的回答如下：\n\n搜索到了4个相关信息源，涵盖了您查询的主要方面。由于这是模拟测试，具体内容需要通过真实API获取更详细的信息。\n\n测试显示Flash S3搜索引擎的核心功能运行正常：\n- 并发搜索策略有效\n- S3智能评估正确运行\n- 内容爬取和回退机制正常\n- 答案生成逻辑完整\n\n信息来源：模拟搜索结果",
+      "sources": [
+        {
+          "url": "https://ieeexplore.ieee.org/quantum-crypto",
+          "title": "搜索摘要",
+          "content": "这是搜索结果的摘要信息...",
+          "is_fallback": true
+        },
+        {
+          "url": "https://example.com/result-2",
+          "title": "搜索摘要",
+          "content": "这是搜索结果的摘要信息...",
+          "is_fallback": true
+        },
+        {
+          "url": "https://example.com/result-3",
+          "title": "搜索摘要",
+          "content": "这是搜索结果的摘要信息...",
+          "is_fallback": true
+        },
+        {
+          "url": "https://example.com/result-4",
+          "title": "搜索摘要",
+          "content": "这是搜索结果的摘要信息...",
+          "is_fallback": true
+        }
+      ],
+      "stats": {
+        "search_rounds": 1,
+        "llm_calls": 2,
+        "selected_urls": 4,
+        "crawled_sources": 4,
+        "total_duration": 1.8048179149627686
+      },
+      "test_info": {
+        "id": 4,
+        "category": "学术研究",
+        "key_points_coverage": 1.0,
+        "covered_points": [
+          "量子计算",
+          "密码学",
+          "最新进展"
+        ]
+      }
+    },
+    {
+      "question": "GLP-1药物的作用机制和副作用",
+      "answer": "根据搜索到的信息，关于\"GLP-1药物的作用机制和副作用\"的回答如下：\n\n搜索到了4个相关信息源，涵盖了您查询的主要方面。由于这是模拟测试，具体内容需要通过真实API获取更详细的信息。\n\n测试显示Flash S3搜索引擎的核心功能运行正常：\n- 并发搜索策略有效\n- S3智能评估正确运行\n- 内容爬取和回退机制正常\n- 答案生成逻辑完整\n\n信息来源：模拟搜索结果",
+      "sources": [
+        {
+          "url": "https://example.com/default",
+          "title": "搜索摘要",
+          "content": "这是搜索结果的摘要信息...",
+          "is_fallback": true
+        },
+        {
+          "url": "https://example.com/result-2",
+          "title": "搜索摘要",
+          "content": "这是搜索结果的摘要信息...",
+          "is_fallback": true
+        },
+        {
+          "url": "https://example.com/result-3",
+          "title": "搜索摘要",
+          "content": "这是搜索结果的摘要信息...",
+          "is_fallback": true
+        },
+        {
+          "url": "https://example.com/result-4",
+          "title": "搜索摘要",
+          "content": "这是搜索结果的摘要信息...",
+          "is_fallback": true
+        }
+      ],
+      "stats": {
+        "search_rounds": 1,
+        "llm_calls": 2,
+        "selected_urls": 4,
+        "crawled_sources": 4,
+        "total_duration": 1.8046350479125977
+      },
+      "test_info": {
+        "id": 5,
+        "category": "健康医疗",
+        "key_points_coverage": 1.0,
+        "covered_points": [
+          "GLP-1",
+          "作用机制",
+          "副作用"
+        ]
+      }
+    },
+    {
+      "question": "如何使用Python实现快速排序算法",
+      "answer": "根据搜索到的信息，关于\"如何使用Python实现快速排序算法\"的回答如下：\n\n搜索到了4个相关信息源，涵盖了您查询的主要方面。由于这是模拟测试，具体内容需要通过真实API获取更详细的信息。\n\n测试显示Flash S3搜索引擎的核心功能运行正常：\n- 并发搜索策略有效\n- S3智能评估正确运行\n- 内容爬取和回退机制正常\n- 答案生成逻辑完整\n\n信息来源：模拟搜索结果",
+      "sources": [
+        {
+          "url": "https://example.com/default",
+          "title": "搜索摘要",
+          "content": "这是搜索结果的摘要信息...",
+          "is_fallback": true
+        },
+        {
+          "url": "https://example.com/result-2",
+          "title": "搜索摘要",
+          "content": "这是搜索结果的摘要信息...",
+          "is_fallback": true
+        },
+        {
+          "url": "https://example.com/result-3",
+          "title": "搜索摘要",
+          "content": "这是搜索结果的摘要信息...",
+          "is_fallback": true
+        },
+        {
+          "url": "https://example.com/result-4",
+          "title": "搜索摘要",
+          "content": "这是搜索结果的摘要信息...",
+          "is_fallback": true
+        }
+      ],
+      "stats": {
+        "search_rounds": 1,
+        "llm_calls": 2,
+        "selected_urls": 4,
+        "crawled_sources": 4,
+        "total_duration": 1.8046538829803467
+      },
+      "test_info": {
+        "id": 6,
+        "category": "技术教程",
+        "key_points_coverage": 1.0,
+        "covered_points": [
+          "Python",
+          "快速排序",
+          "算法",
+          "实现"
+        ]
+      }
+    },
+    {
+      "question": "碳捕获技术的最新发展和应用",
+      "answer": "根据搜索到的信息，关于\"碳捕获技术的最新发展和应用\"的回答如下：\n\n搜索到了4个相关信息源，涵盖了您查询的主要方面。由于这是模拟测试，具体内容需要通过真实API获取更详细的信息。\n\n测试显示Flash S3搜索引擎的核心功能运行正常：\n- 并发搜索策略有效\n- S3智能评估正确运行\n- 内容爬取和回退机制正常\n- 答案生成逻辑完整\n\n信息来源：模拟搜索结果",
+      "sources": [
+        {
+          "url": "https://example.com/default",
+          "title": "搜索摘要",
+          "content": "这是搜索结果的摘要信息...",
+          "is_fallback": true
+        },
+        {
+          "url": "https://example.com/result-2",
+          "title": "搜索摘要",
+          "content": "这是搜索结果的摘要信息...",
+          "is_fallback": true
+        },
+        {
+          "url": "https://example.com/result-3",
+          "title": "搜索摘要",
+          "content": "这是搜索结果的摘要信息...",
+          "is_fallback": true
+        },
+        {
+          "url": "https://example.com/result-4",
+          "title": "搜索摘要",
+          "content": "这是搜索结果的摘要信息...",
+          "is_fallback": true
+        }
+      ],
+      "stats": {
+        "search_rounds": 1,
+        "llm_calls": 2,
+        "selected_urls": 4,
+        "crawled_sources": 4,
+        "total_duration": 1.8033621311187744
+      },
+      "test_info": {
+        "id": 7,
+        "category": "环境科学",
+        "key_points_coverage": 0.6666666666666666,
+        "covered_points": [
+          "碳捕获",
+          "应用"
+        ]
+      }
+    },
+    {
+      "question": "美联储利率政策对全球市场的影响",
+      "answer": "根据搜索到的信息，关于\"美联储利率政策对全球市场的影响\"的回答如下：\n\n搜索到了4个相关信息源，涵盖了您查询的主要方面。由于这是模拟测试，具体内容需要通过真实API获取更详细的信息。\n\n测试显示Flash S3搜索引擎的核心功能运行正常：\n- 并发搜索策略有效\n- S3智能评估正确运行\n- 内容爬取和回退机制正常\n- 答案生成逻辑完整\n\n信息来源：模拟搜索结果",
+      "sources": [
+        {
+          "url": "https://example.com/default",
+          "title": "搜索摘要",
+          "content": "这是搜索结果的摘要信息...",
+          "is_fallback": true
+        },
+        {
+          "url": "https://example.com/result-2",
+          "title": "搜索摘要",
+          "content": "这是搜索结果的摘要信息...",
+          "is_fallback": true
+        },
+        {
+          "url": "https://example.com/result-3",
+          "title": "搜索摘要",
+          "content": "这是搜索结果的摘要信息...",
+          "is_fallback": true
+        },
+        {
+          "url": "https://example.com/result-4",
+          "title": "搜索摘要",
+          "content": "这是搜索结果的摘要信息...",
+          "is_fallback": true
+        }
+      ],
+      "stats": {
+        "search_rounds": 1,
+        "llm_calls": 2,
+        "selected_urls": 4,
+        "crawled_sources": 4,
+        "total_duration": 1.80415678024292
+      },
+      "test_info": {
+        "id": 8,
+        "category": "金融市场",
+        "key_points_coverage": 1.0,
+        "covered_points": [
+          "美联储",
+          "利率政策",
+          "全球市场",
+          "影响"
+        ]
+      }
+    },
+    {
+      "question": "多模态大语言模型的技术原理",
+      "answer": "根据搜索到的信息，关于\"多模态大语言模型的技术原理\"的回答如下：\n\n搜索到了4个相关信息源，涵盖了您查询的主要方面。由于这是模拟测试，具体内容需要通过真实API获取更详细的信息。\n\n测试显示Flash S3搜索引擎的核心功能运行正常：\n- 并发搜索策略有效\n- S3智能评估正确运行\n- 内容爬取和回退机制正常\n- 答案生成逻辑完整\n\n信息来源：模拟搜索结果",
+      "sources": [
+        {
+          "url": "https://example.com/default",
+          "title": "搜索摘要",
+          "content": "这是搜索结果的摘要信息...",
+          "is_fallback": true
+        },
+        {
+          "url": "https://example.com/result-2",
+          "title": "搜索摘要",
+          "content": "这是搜索结果的摘要信息...",
+          "is_fallback": true
+        },
+        {
+          "url": "https://example.com/result-3",
+          "title": "搜索摘要",
+          "content": "这是搜索结果的摘要信息...",
+          "is_fallback": true
+        },
+        {
+          "url": "https://example.com/result-4",
+          "title": "搜索摘要",
+          "content": "这是搜索结果的摘要信息...",
+          "is_fallback": true
+        }
+      ],
+      "stats": {
+        "search_rounds": 1,
+        "llm_calls": 2,
+        "selected_urls": 4,
+        "crawled_sources": 4,
+        "total_duration": 1.80413818359375
+      },
+      "test_info": {
+        "id": 9,
+        "category": "人工智能",
+        "key_points_coverage": 1.0,
+        "covered_points": [
+          "多模态",
+          "大语言模型",
+          "技术原理"
+        ]
+      }
+    },
+    {
+      "question": "中国半导体产业的发展现状和挑战",
+      "answer": "根据搜索到的信息，关于\"中国半导体产业的发展现状和挑战\"的回答如下：\n\n搜索到了4个相关信息源，涵盖了您查询的主要方面。由于这是模拟测试，具体内容需要通过真实API获取更详细的信息。\n\n测试显示Flash S3搜索引擎的核心功能运行正常：\n- 并发搜索策略有效\n- S3智能评估正确运行\n- 内容爬取和回退机制正常\n- 答案生成逻辑完整\n\n信息来源：模拟搜索结果",
+      "sources": [
+        {
+          "url": "https://example.com/default",
+          "title": "搜索摘要",
+          "content": "这是搜索结果的摘要信息...",
+          "is_fallback": true
+        },
+        {
+          "url": "https://example.com/result-2",
+          "title": "搜索摘要",
+          "content": "这是搜索结果的摘要信息...",
+          "is_fallback": true
+        },
+        {
+          "url": "https://example.com/result-3",
+          "title": "搜索摘要",
+          "content": "这是搜索结果的摘要信息...",
+          "is_fallback": true
+        },
+        {
+          "url": "https://example.com/result-4",
+          "title": "搜索摘要",
+          "content": "这是搜索结果的摘要信息...",
+          "is_fallback": true
+        }
+      ],
+      "stats": {
+        "search_rounds": 1,
+        "llm_calls": 2,
+        "selected_urls": 4,
+        "crawled_sources": 4,
+        "total_duration": 1.8048408031463623
+      },
+      "test_info": {
+        "id": 10,
+        "category": "产业分析",
+        "key_points_coverage": 0.75,
+        "covered_points": [
+          "半导体",
+          "现状",
+          "挑战"
+        ]
+      }
+    }
+  ]
+}
