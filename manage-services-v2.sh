@@ -12,19 +12,6 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# 检测Docker Compose命令
-if command -v "docker compose" &> /dev/null; then
-    DOCKER_COMPOSE="docker compose"
-    print_info "使用 Docker Compose V2"
-elif command -v "docker-compose" &> /dev/null; then
-    DOCKER_COMPOSE="docker-compose"
-    print_info "使用 Docker Compose V1"
-else
-    echo -e "${RED}[ERROR]${NC} 未找到 Docker Compose"
-    echo "请安装 Docker Compose: https://docs.docker.com/compose/install/"
-    exit 1
-fi
-
 # 函数：打印带颜色的消息
 print_info() {
     echo -e "${BLUE}[INFO]${NC} $1"
@@ -41,6 +28,19 @@ print_error() {
 print_warning() {
     echo -e "${YELLOW}[WARNING]${NC} $1"
 }
+
+# 检测Docker Compose命令
+if command -v "docker compose" &> /dev/null; then
+    DOCKER_COMPOSE="docker compose"
+    print_info "使用 Docker Compose V2"
+elif command -v "docker-compose" &> /dev/null; then
+    DOCKER_COMPOSE="docker-compose"
+    print_info "使用 Docker Compose V1"
+else
+    echo -e "${RED}[ERROR]${NC} 未找到 Docker Compose"
+    echo "请安装 Docker Compose: https://docs.docker.com/compose/install/"
+    exit 1
+fi
 
 # 函数：检查服务健康状态
 check_health() {
