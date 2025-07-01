@@ -1,0 +1,40 @@
+#!/bin/bash
+
+# Fix Docker Compose compatibility issues
+
+echo "Checking Docker and Docker Compose versions..."
+docker --version
+docker-compose --version
+
+echo -e "\nThe error 'Not supported URL scheme http+docker' usually means:"
+echo "1. Docker Compose version is outdated"
+echo "2. Python docker package needs updating"
+echo ""
+echo "To fix this issue, try the following:"
+echo ""
+echo "Option 1: Update Docker Compose (Recommended)"
+echo "----------------------------------------"
+echo "# Remove old docker-compose"
+echo "sudo apt-get remove docker-compose"
+echo ""
+echo "# Install Docker Compose V2 (newer version)"
+echo "sudo apt-get update"
+echo "sudo apt-get install docker-compose-plugin"
+echo ""
+echo "# Use 'docker compose' instead of 'docker-compose'"
+echo "docker compose version"
+echo ""
+echo "Option 2: Install Docker Compose via pip"
+echo "----------------------------------------"
+echo "sudo pip3 install --upgrade docker-compose"
+echo ""
+echo "Option 3: Download Docker Compose directly"
+echo "----------------------------------------"
+echo "sudo curl -L \"https://github.com/docker/compose/releases/download/v2.24.0/docker-compose-$(uname -s)-$(uname -m)\" -o /usr/local/bin/docker-compose"
+echo "sudo chmod +x /usr/local/bin/docker-compose"
+echo ""
+echo "After fixing, you can use:"
+echo "# For Docker Compose V2:"
+echo "docker compose -f docker-compose-dev.yml up -d api mcp"
+echo ""
+echo "# Or update the manage-services.sh script to use 'docker compose' instead of 'docker-compose'"

@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# FlashSearch 服务管理脚本
-# 用于快速启动、停止和管理API和MCP服务
+# FlashSearch 服务管理脚本 V2
+# 兼容 docker compose (V2) 和 docker-compose (V1)
 
 set -e
 
@@ -11,6 +11,19 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
+
+# 检测Docker Compose命令
+if command -v "docker compose" &> /dev/null; then
+    DOCKER_COMPOSE="docker compose"
+    print_info "使用 Docker Compose V2"
+elif command -v "docker-compose" &> /dev/null; then
+    DOCKER_COMPOSE="docker-compose"
+    print_info "使用 Docker Compose V1"
+else
+    echo -e "${RED}[ERROR]${NC} 未找到 Docker Compose"
+    echo "请安装 Docker Compose: https://docs.docker.com/compose/install/"
+    exit 1
+fi
 
 # 函数：打印带颜色的消息
 print_info() {
@@ -57,6 +70,12 @@ check_health() {
 start_local() {
     print_info "启动本地服务..."
     
+    # 检查Python环境
+    if ! command -v python3 &> /dev/null; then
+        print_error "未找到 Python3，请先安装"
+        exit 1
+    fi
+    
     # 检查是否已有服务在运行
     if lsof -ti:8060 > /dev/null 2>&1; then
         print_warning "端口 8060 已被占用，可能API服务已在运行"
@@ -97,7 +116,16 @@ start_docker() {
         exit 1
     fi
     
-    docker compose -f docker-compose-dev.yml up -d api mcp
+    print_info "使用命令: $DOCKER_COMPOSE"
+    
+    # 检查docker-compose文件是否存在
+    if [ ! -f "docker-compose-dev.yml" ]; then
+        print_error "未找到 docker-compose-dev.yml 文件"
+        exit 1
+    fi
+    
+    # 启动服务
+    $DOCKER_COMPOSE -f docker-compose-dev.yml up -d api mcp
     
     sleep 5
     
@@ -106,6 +134,47 @@ start_docker() {
     check_health "MCP" "http://localhost:9060/sse/"
     
     print_success "Docker服务启动完成!"
+}
+
+# 函数：使用Python直接启动（备选方案）
+start_python() {
+    print_info "使用Python直接启动服务..."
+    
+    # 检查依赖
+    if [ ! -f "requirements.txt" ]; then
+        print_error "未找到 requirements.txt"
+        exit 1
+    fi
+    
+    # 安装依赖
+    print_info "检查Python依赖..."
+    pip3 install -q -r requirements.txt
+    
+    # 启动API服务
+    print_info "启动 API 服务..."
+    cd server
+    python3 -m uvicorn api.flash_search_api:app --host 0.0.0.0 --port 8060 --reload &
+    API_PID=$!
+    cd ..
+    
+    # 启动MCP服务
+    print_info "启动 MCP 服务..."
+    cd server
+    python3 mcp/mira_flash_search.py --transport sse --host 0.0.0.0 --port 9060 &
+    MCP_PID=$!
+    cd ..
+    
+    print_success "服务已启动"
+    echo "API PID: $API_PID"
+    echo "MCP PID: $MCP_PID"
+    
+    # 保存PID以便后续停止
+    echo $API_PID > .api.pid
+    echo $MCP_PID > .mcp.pid
+    
+    sleep 3
+    check_health "API" "http://localhost:8060/health"
+    check_health "MCP" "http://localhost:9060/sse/"
 }
 
 # 函数：停止所有服务
@@ -123,10 +192,13 @@ stop_all() {
         kill -9 $(lsof -ti:9060) 2>/dev/null || true
     fi
     
+    # 清理PID文件
+    rm -f .api.pid .mcp.pid
+    
     # 停止Docker服务
-    if docker compose -f docker-compose-dev.yml ps -q 2>/dev/null | grep -q .; then
+    if [ -f "docker-compose-dev.yml" ] && docker ps -q 2>/dev/null | grep -q .; then
         print_info "停止Docker服务..."
-        docker compose -f docker-compose-dev.yml down
+        $DOCKER_COMPOSE -f docker-compose-dev.yml down || true
     fi
     
     print_success "所有服务已停止!"
@@ -156,6 +228,13 @@ status() {
         echo -e "  MCP服务 (9060): ${RED}未运行${NC}"
     fi
     
+    # 检查Docker服务
+    if [ -f "docker-compose-dev.yml" ]; then
+        echo ""
+        echo "Docker 容器状态:"
+        $DOCKER_COMPOSE -f docker-compose-dev.yml ps 2>/dev/null || echo "  无运行中的容器"
+    fi
+    
     echo ""
 }
 
@@ -167,23 +246,31 @@ logs() {
         api)
             if [ -f api_server.log ]; then
                 tail -f api_server.log
+            elif [ -f "docker-compose-dev.yml" ]; then
+                $DOCKER_COMPOSE -f docker-compose-dev.yml logs -f api
             else
-                print_error "未找到API日志文件"
+                print_error "未找到API日志"
             fi
             ;;
         mcp)
             if [ -f mcp_server.log ]; then
                 tail -f mcp_server.log
+            elif [ -f "docker-compose-dev.yml" ]; then
+                $DOCKER_COMPOSE -f docker-compose-dev.yml logs -f mcp
             else
-                print_error "未找到MCP日志文件"
+                print_error "未找到MCP日志"
             fi
             ;;
-        docker)
-            docker compose -f docker-compose-dev.yml logs -f
+        all|docker)
+            if [ -f "docker-compose-dev.yml" ]; then
+                $DOCKER_COMPOSE -f docker-compose-dev.yml logs -f
+            else
+                print_error "未找到Docker配置"
+            fi
             ;;
         *)
             print_error "未知服务: $service"
-            echo "可用选项: api, mcp, docker"
+            echo "可用选项: api, mcp, all"
             ;;
     esac
 }
@@ -196,6 +283,9 @@ case "${1:-help}" in
     start-docker)
         start_docker
         ;;
+    start-python)
+        start_python
+        ;;
     stop)
         stop_all
         ;;
@@ -203,25 +293,29 @@ case "${1:-help}" in
         status
         ;;
     logs)
-        logs "${2:-docker}"
+        logs "${2:-all}"
         ;;
     help|*)
-        echo "FlashSearch 服务管理工具"
+        echo "FlashSearch 服务管理工具 V2"
         echo ""
         echo "用法: $0 [命令] [选项]"
         echo ""
         echo "命令:"
-        echo "  start-local  - 启动本地服务（非Docker）"
+        echo "  start-local  - 启动本地服务（使用shell脚本）"
         echo "  start-docker - 使用Docker启动服务"
+        echo "  start-python - 直接使用Python启动（备选）"
         echo "  stop         - 停止所有服务"
         echo "  status       - 查看服务状态"
-        echo "  logs [服务]  - 查看日志 (api/mcp/docker)"
+        echo "  logs [服务]  - 查看日志 (api/mcp/all)"
         echo "  help         - 显示此帮助信息"
         echo ""
         echo "示例:"
         echo "  $0 start-local     # 启动本地服务"
         echo "  $0 start-docker    # 使用Docker启动"
+        echo "  $0 start-python    # Python直接启动"
         echo "  $0 status          # 查看状态"
         echo "  $0 logs api        # 查看API日志"
+        echo ""
+        echo "Docker Compose版本: $DOCKER_COMPOSE"
         ;;
 esac
