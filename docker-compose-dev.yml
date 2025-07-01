@@ -1,0 +1,109 @@
+# FlashSearch 开发环境 Docker Compose
+# 用于本地开发，直接挂载代码目录，支持热重载
+
+version: '3.8'
+
+services:
+  # FastAPI REST API 服务器 (端口 8060)
+  api:
+    image: python:3.11-slim
+    container_name: flashsearch-api-dev
+    working_dir: /app
+    command: >
+      bash -c "
+        pip install -r requirements.txt &&
+        cd server &&
+        uvicorn api.flash_search_api:app --host 0.0.0.0 --port 8060 --reload --log-level debug
+      "
+    ports:
+      - "8060:8060"
+    environment:
+      - PYTHONPATH=/app
+      - LOG_LEVEL=debug
+    env_file:
+      - .env
+    volumes:
+      - ./:/app
+    networks:
+      - flashsearch-dev
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8060/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # FastMCP SSE 服务器 (端口 9060)
+  mcp:
+    image: python:3.11-slim
+    container_name: flashsearch-mcp-dev
+    working_dir: /app
+    command: >
+      bash -c "
+        pip install -r requirements.txt &&
+        cd server &&
+        python mcp/mira_flash_search.py --transport sse --host 0.0.0.0 --port 9060
+      "
+    ports:
+      - "9060:9060"
+    environment:
+      - PYTHONPATH=/app
+      - LOG_LEVEL=info
+    env_file:
+      - .env
+    volumes:
+      - ./:/app
+    networks:
+      - flashsearch-dev
+    depends_on:
+      - api
+
+  # Langfuse (可选 - 追踪服务)
+  langfuse:
+    image: langfuse/langfuse:latest
+    container_name: flashsearch-langfuse
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@langfuse-db:5432/langfuse
+      - NEXTAUTH_URL=http://localhost:3000
+      - NEXTAUTH_SECRET=mysecret
+      - SALT=mysalt
+    depends_on:
+      - langfuse-db
+    networks:
+      - flashsearch-dev
+
+  # Langfuse 数据库
+  langfuse-db:
+    image: postgres:15
+    container_name: flashsearch-langfuse-db
+    environment:
+      - POSTGRES_DB=langfuse
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    volumes:
+      - langfuse-db-data:/var/lib/postgresql/data
+    networks:
+      - flashsearch-dev
+
+networks:
+  flashsearch-dev:
+    name: flashsearch-dev-net
+    driver: bridge
+
+volumes:
+  langfuse-db-data:
+    driver: local
+
+# 使用说明:
+# 1. 启动所有服务: docker-compose -f docker-compose-dev.yml up -d
+# 2. 仅启动API和MCP: docker-compose -f docker-compose-dev.yml up -d api mcp
+# 3. 查看日志: docker-compose -f docker-compose-dev.yml logs -f [service_name]
+# 4. 停止服务: docker-compose -f docker-compose-dev.yml down
+# 5. 清理所有数据: docker-compose -f docker-compose-dev.yml down -v
+#
+# 访问地址:
+# - API文档: http://localhost:8060/docs
+# - API健康检查: http://localhost:8060/health
+# - MCP SSE: http://localhost:9060/sse/
+# - Langfuse UI: http://localhost:3000 (可选)

@@ -23,6 +23,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(
 
 from src.core.flash_s3_enhanced import flash_s3_enhanced
 from src.core.langfuse_client import LangfuseObservabilityClient
+from src.core.search_modes import get_available_modes, validate_mode
 
 app = FastAPI(
     title="FlashSearch API Server",
@@ -45,6 +46,7 @@ app.add_middleware(
 class SearchRequest(BaseModel):
     """搜索请求模型"""
     query: str = Field(..., description="搜索查询", min_length=1, max_length=1000)
+    mode: Optional[str] = Field("fast", description="搜索模式 (fast/normal/deep)")
     domain: Optional[str] = Field(None, description="搜索领域 (news, finance, tech, academic, policy)")
     enable_langfuse: Optional[bool] = Field(True, description="是否启用Langfuse追踪")
     max_results: Optional[int] = Field(12, description="最大搜索结果数", ge=1, le=50)
@@ -108,6 +110,15 @@ async def get_stats():
         "last_updated": datetime.now().isoformat()
     }
 
+@app.get("/modes", response_model=Dict[str, Any])
+async def get_search_modes():
+    """获取可用的搜索模式"""
+    return {
+        "default": "fast",
+        "modes": get_available_modes(),
+        "description": "搜索模式控制速度与质量的权衡"
+    }
+
 @app.post("/search", response_model=SearchResponse)
 async def search(request: SearchRequest):
     """
@@ -123,13 +134,13 @@ async def search(request: SearchRequest):
     search_stats["total_searches"] += 1
     
     logger.info(f"🔍 开始搜索: {request.query[:100]}...")
-    logger.debug(f"搜索参数 - 领域: {request.domain}, Langfuse: {request.enable_langfuse}")
+    logger.debug(f"搜索参数 - 模式: {request.mode}, 领域: {request.domain}, Langfuse: {request.enable_langfuse}")
     
     try:
         # 执行搜索
-        logger.debug("调用flash_s3_enhanced搜索引擎")
-        # 注意：flash_s3_enhanced只接受question参数，domain和langfuse在内部处理
-        result = await flash_s3_enhanced(question=request.query)
+        logger.debug(f"调用flash_s3_enhanced搜索引擎 (模式: {request.mode})")
+        # 传递question和mode参数
+        result = await flash_s3_enhanced(question=request.query, mode=request.mode)
         
         # 计算响应时间
         response_time = asyncio.get_event_loop().time() - start_time
@@ -200,7 +211,7 @@ async def search_async(request: SearchRequest, background_tasks: BackgroundTasks
 async def execute_background_search(task_id: str, request: SearchRequest):
     """执行后台搜索任务"""
     try:
-        result = await flash_s3_enhanced(question=request.query)
+        result = await flash_s3_enhanced(question=request.query, mode=request.mode)
         
         # 这里可以将结果保存到数据库或缓存
         print(f"后台任务 {task_id} 完成: {len(result.get('answer', ''))} 字符")

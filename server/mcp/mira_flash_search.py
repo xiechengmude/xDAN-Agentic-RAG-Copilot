@@ -59,6 +59,7 @@ server_stats = {
 )
 async def flash_search_tool(
     query: Annotated[str, Field(description="搜索查询，支持中英文混合", min_length=1, max_length=1000)],
+    mode: Annotated[str, Field(description="搜索模式: fast(15秒)/normal(60秒)/deep(120秒)")] = "fast",
     domain: Annotated[Optional[str], Field(description="搜索领域: news, finance, tech, academic, policy")] = None,
     enable_langfuse: Annotated[bool, Field(description="是否启用Langfuse追踪")] = True,
     ctx: Context = None
@@ -77,13 +78,12 @@ async def flash_search_tool(
     server_stats["total_requests"] += 1
     
     if ctx:
-        await ctx.info(f"🔍 开始FlashSearch搜索: {query[:50]}...")
+        await ctx.info(f"🔍 开始FlashSearch搜索 (模式: {mode}): {query[:50]}...")
         await ctx.report_progress(progress=10, total=100)
     
     try:
-        # 执行搜索
-        # 注意：flash_s3_enhanced只接受question参数，domain和langfuse在内部处理
-        result = await flash_s3_enhanced(question=query)
+        # 执行搜索，传入搜索模式
+        result = await flash_s3_enhanced(question=query, mode=mode)
         
         if ctx:
             await ctx.report_progress(progress=90, total=100)
@@ -109,6 +109,7 @@ async def flash_search_tool(
         return {
             "success": True,
             "query": query,
+            "mode": mode,
             "domain": domain,
             "answer": answer,
             "sources_count": len(sources),
@@ -116,6 +117,7 @@ async def flash_search_tool(
             "stats": {
                 **stats,
                 "response_time": round(response_time, 2),
+                "search_mode": mode,
                 "mcp_version": "2.5.0"
             },
             "trace_id": result.get("trace_id"),

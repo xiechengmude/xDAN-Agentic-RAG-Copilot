@@ -14,6 +14,8 @@ from dataclasses import dataclass
 
 from .flash_search_engine import FlashSearchEngine
 from .search_strategy import search_strategy
+from .search_modes import get_search_config, SearchMode
+from .flash_search_engine_mode_patch import apply_search_mode_config
 
 logger = logging.getLogger(__name__)
 
@@ -241,11 +243,29 @@ class FlashS3Enhanced(FlashSearchEngine):
     增强版混合搜索引擎：FlashSearch并发 + S3智能迭代 + 原版Agent能力
     """
     
-    def __init__(self):
+    def __init__(self, mode: str = "fast"):
+        """
+        初始化增强搜索引擎
+        
+        Args:
+            mode: 搜索模式 (fast/normal/deep)，默认为fast
+        """
         super().__init__()
         self.s3_evaluator = S3AgentEvaluator(self.llm_client)
-        self.max_iterations = 3  # 支持更多轮迭代
-        self.time_budget = 60    # 总时间预算
+        
+        # 加载搜索模式配置
+        self.mode = mode
+        self.config = get_search_config(mode)
+        
+        # 应用配置参数
+        self.max_iterations = self.config["max_iterations"]
+        self.time_budget = self.config["time_budget"]
+        
+        # 应用模式配置到搜索引擎
+        apply_search_mode_config(self.search_engine, self.config)
+        
+        # 记录当前模式
+        logger.info(f"FlashS3Enhanced initialized with mode: {mode} ({self.config['name']})")
     
     async def parallel_search_strategies(
         self, 
@@ -400,8 +420,8 @@ class FlashS3Enhanced(FlashSearchEngine):
                 
                 # 1. 确定搜索策略
                 if iteration == 0:
-                    # 第一轮：基础策略组合
-                    strategies = ["precision", "broad", "recent"]
+                    # 根据搜索模式选择策略
+                    strategies = self.config["search_strategies"]
                     result["stats"]["search_strategies_used"].extend(strategies)
                 else:
                     # 后续轮：基于S3评估的针对性策略
@@ -492,9 +512,16 @@ class FlashS3Enhanced(FlashSearchEngine):
 
 
 # 便捷函数
-async def flash_s3_enhanced(question: str) -> Dict[str, Any]:
+async def flash_s3_enhanced(question: str, mode: str = "fast") -> Dict[str, Any]:
     """
     增强版S3搜索
+    
+    Args:
+        question: 搜索问题
+        mode: 搜索模式 (fast/normal/deep)，默认为fast
+        
+    Returns:
+        搜索结果字典
     """
-    engine = FlashS3Enhanced()
+    engine = FlashS3Enhanced(mode=mode)
     return await engine.flash_s3_enhanced(question)

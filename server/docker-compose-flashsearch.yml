@@ -1,0 +1,70 @@
+# FlashSearch API & MCP 服务 Docker Compose
+# 用于同时启动API服务器(8060)和MCP服务器(9060)
+
+version: '3.8'
+
+services:
+  # FastAPI REST API 服务器
+  flashsearch-api:
+    build:
+      context: ..
+      dockerfile: server/Dockerfile.api
+    container_name: flashsearch-api
+    ports:
+      - "8060:8060"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8060
+      - LOG_LEVEL=debug
+      - WORKERS=1
+      - RELOAD=true
+    env_file:
+      - ../.env
+    volumes:
+      - ../src:/app/src:ro
+      - ../server:/app/server:ro
+      - ../.env:/app/.env:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8060/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - flashsearch-network
+
+  # FastMCP SSE 服务器  
+  flashsearch-mcp:
+    build:
+      context: ..
+      dockerfile: server/Dockerfile.mcp
+    container_name: flashsearch-mcp
+    ports:
+      - "9060:9060"
+    environment:
+      - TRANSPORT=sse
+      - HOST=0.0.0.0
+      - PORT=9060
+      - LOG_LEVEL=info
+    env_file:
+      - ../.env
+    volumes:
+      - ../src:/app/src:ro
+      - ../server:/app/server:ro
+      - ../.env:/app/.env:ro
+    restart: unless-stopped
+    networks:
+      - flashsearch-network
+    depends_on:
+      - flashsearch-api  # 确保API先启动
+
+networks:
+  flashsearch-network:
+    name: flashsearch-net
+    driver: bridge
+
+# 使用说明:
+# 1. 启动服务: docker-compose -f docker-compose-flashsearch.yml up -d
+# 2. 查看日志: docker-compose -f docker-compose-flashsearch.yml logs -f
+# 3. 停止服务: docker-compose -f docker-compose-flashsearch.yml down
+# 4. 重建镜像: docker-compose -f docker-compose-flashsearch.yml build --no-cache
