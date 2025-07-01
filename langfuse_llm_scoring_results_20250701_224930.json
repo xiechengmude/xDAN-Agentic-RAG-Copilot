@@ -1,0 +1,62 @@
+[
+  {
+    "question_id": "market_research_1745567367_16",
+    "category": "市场研究能力：产品与行业分析",
+    "trace_id": "54efaecf679b2affc3205205eb5e137c",
+    "success": true,
+    "stages_completed": [
+      "serp",
+      "select",
+      "fetch",
+      "generate",
+      "evaluate-async"
+    ],
+    "answer_length": 1043,
+    "processing_time": 97.320619,
+    "scores": {},
+    "score_details": {},
+    "scoring_time": 0.0,
+    "scoring_task_id": "scoring_54efaecf679b2affc3205205eb5e137c_1751381220.209972",
+    "error": null
+  },
+  {
+    "question_id": "market_research_1745567367_16",
+    "category": "市场研究能力：产品与行业分析",
+    "trace_id": "9753bf72d6adf5b7fc032db01bdd38db",
+    "success": true,
+    "stages_completed": [
+      "serp",
+      "select",
+      "fetch",
+      "generate",
+      "evaluate-async"
+    ],
+    "answer_length": 936,
+    "processing_time": 59.761832,
+    "scores": {},
+    "score_details": {},
+    "scoring_time": 0.0,
+    "scoring_task_id": "scoring_9753bf72d6adf5b7fc032db01bdd38db_1751381281.976549",
+    "error": null
+  },
+  {
+    "question_id": "market_research_1745567367_38",
+    "category": "市场研究能力：产品与行业分析",
+    "trace_id": "bf7ceac6635ce98b19453c58fc37c0f8",
+    "success": true,
+    "stages_completed": [
+      "serp",
+      "select",
+      "fetch",
+      "generate",
+      "evaluate-async"
+    ],
+    "answer_length": 1346,
+    "processing_time": 74.219766,
+    "scores": {},
+    "score_details": {},
+    "scoring_time": 0.0,
+    "scoring_task_id": "scoring_bf7ceac6635ce98b19453c58fc37c0f8_1751381358.197882",
+    "error": null
+  }
+]
