@@ -13,12 +13,16 @@ import sys
 import os
 from datetime import datetime
 import uvicorn
+import logging
+
+# 配置日志记录器
+logger = logging.getLogger(__name__)
 
 # 添加项目根目录到路径
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from src.core.flash_s3_enhanced import flash_s3_enhanced
-from src.core.langfuse_client import LangfuseClient
+from src.core.langfuse_client import LangfuseObservabilityClient
 
 app = FastAPI(
     title="FlashSearch API Server",
@@ -118,13 +122,14 @@ async def search(request: SearchRequest):
     start_time = asyncio.get_event_loop().time()
     search_stats["total_searches"] += 1
     
+    logger.info(f"🔍 开始搜索: {request.query[:100]}...")
+    logger.debug(f"搜索参数 - 领域: {request.domain}, Langfuse: {request.enable_langfuse}")
+    
     try:
         # 执行搜索
-        result = await flash_s3_enhanced(
-            question=request.query,
-            domain=request.domain,
-            enable_langfuse=request.enable_langfuse
-        )
+        logger.debug("调用flash_s3_enhanced搜索引擎")
+        # 注意：flash_s3_enhanced只接受question参数，domain和langfuse在内部处理
+        result = await flash_s3_enhanced(question=request.query)
         
         # 计算响应时间
         response_time = asyncio.get_event_loop().time() - start_time
@@ -135,6 +140,9 @@ async def search(request: SearchRequest):
             (search_stats["avg_response_time"] * (search_stats["successful_searches"] - 1) + response_time) 
             / search_stats["successful_searches"]
         )
+        
+        logger.info(f"✅ 搜索完成: {len(result.get('answer', ''))}字符, {len(result.get('sources', []))}来源, {response_time:.2f}s")
+        logger.debug(f"搜索统计 - 成功: {search_stats['successful_searches']}, 平均时间: {search_stats['avg_response_time']:.2f}s")
         
         # 构建响应
         return SearchResponse(
@@ -154,6 +162,9 @@ async def search(request: SearchRequest):
         
         # 计算失败响应时间
         response_time = asyncio.get_event_loop().time() - start_time
+        
+        logger.error(f"❌ 搜索失败: {str(e)}")
+        logger.debug(f"失败统计 - 总失败: {search_stats['failed_searches']}, 响应时间: {response_time:.2f}s")
         
         raise HTTPException(
             status_code=500,
@@ -189,11 +200,7 @@ async def search_async(request: SearchRequest, background_tasks: BackgroundTasks
 async def execute_background_search(task_id: str, request: SearchRequest):
     """执行后台搜索任务"""
     try:
-        result = await flash_s3_enhanced(
-            question=request.query,
-            domain=request.domain,
-            enable_langfuse=request.enable_langfuse
-        )
+        result = await flash_s3_enhanced(question=request.query)
         
         # 这里可以将结果保存到数据库或缓存
         print(f"后台任务 {task_id} 完成: {len(result.get('answer', ''))} 字符")
@@ -202,9 +209,13 @@ async def execute_background_search(task_id: str, request: SearchRequest):
         print(f"后台任务 {task_id} 失败: {e}")
 
 # 验证端点
+class ValidateRequest(BaseModel):
+    query: str = Field(..., min_length=1, max_length=1000)
+
 @app.post("/validate")
-async def validate_query(query: str = Field(..., min_length=1, max_length=1000)):
+async def validate_query(request: ValidateRequest):
     """验证查询是否有效"""
+    query = request.query
     try:
         # 简单验证逻辑
         if len(query.strip()) < 3:
@@ -250,19 +261,32 @@ def suggest_domain(query: str) -> Optional[str]:
 
 if __name__ == "__main__":
     import argparse
+    import logging
     
     parser = argparse.ArgumentParser(description="FlashSearch API Server")
     parser.add_argument("--host", default="0.0.0.0", help="服务器主机")
-    parser.add_argument("--port", type=int, default=8000, help="服务器端口")
+    parser.add_argument("--port", type=int, default=8060, help="服务器端口 (默认: 8060)")
     parser.add_argument("--reload", action="store_true", help="开发模式重载")
-    parser.add_argument("--log-level", default="info", help="日志级别")
+    parser.add_argument("--log-level", default="info", choices=["debug", "info", "warning", "error"], help="日志级别")
+    parser.add_argument("--workers", type=int, default=1, help="工作进程数")
     
     args = parser.parse_args()
+    
+    # 配置日志级别
+    if args.log_level == "debug":
+        logging.basicConfig(level=logging.DEBUG)
+        print("🐛 Debug模式已启用")
+    elif args.log_level == "info":
+        logging.basicConfig(level=logging.INFO)
     
     print(f"🚀 启动FlashSearch API Server v2.5.0")
     print(f"📡 服务地址: http://{args.host}:{args.port}")
     print(f"📚 API文档: http://{args.host}:{args.port}/docs")
     print(f"🏥 健康检查: http://{args.host}:{args.port}/health")
+    print(f"📊 统计信息: http://{args.host}:{args.port}/stats")
+    print(f"🔧 日志级别: {args.log_level.upper()}")
+    if args.reload:
+        print("🔄 开发模式: 热重载已启用")
     
     uvicorn.run(
         "flash_search_api:app",
@@ -270,5 +294,7 @@ if __name__ == "__main__":
         port=args.port,
         reload=args.reload,
         log_level=args.log_level,
-        access_log=True
+        access_log=True,
+        workers=args.workers if not args.reload else 1,
+        loop="asyncio"
     )

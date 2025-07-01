@@ -17,7 +17,6 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(
 
 try:
     from fastmcp import FastMCP, Context
-    from fastmcp.tools.tool import ToolResult
     from pydantic import Field
     from typing import Annotated
 except ImportError as e:
@@ -42,8 +41,7 @@ mcp = FastMCP(
     - Langfuse追踪: 完整的搜索链路追踪
     
     使用flash_search工具进行搜索，search_analyze工具进行搜索分析。
-    """,
-    tags={"search", "ai", "mcp", "langfuse"}
+    """
 )
 
 # 全局统计
@@ -57,15 +55,14 @@ server_stats = {
 
 @mcp.tool(
     name="flash_search",
-    description="使用FlashSearch v2.5.0引擎进行智能搜索，支持Google关键词优化和时间感知",
-    tags={"search", "primary"}
+    description="使用FlashSearch v2.5.0引擎进行智能搜索，支持Google关键词优化和时间感知"
 )
 async def flash_search_tool(
     query: Annotated[str, Field(description="搜索查询，支持中英文混合", min_length=1, max_length=1000)],
     domain: Annotated[Optional[str], Field(description="搜索领域: news, finance, tech, academic, policy")] = None,
     enable_langfuse: Annotated[bool, Field(description="是否启用Langfuse追踪")] = True,
     ctx: Context = None
-) -> ToolResult:
+) -> Dict[str, Any]:
     """
     执行FlashSearch智能搜索
     
@@ -85,11 +82,8 @@ async def flash_search_tool(
     
     try:
         # 执行搜索
-        result = await flash_s3_enhanced(
-            question=query,
-            domain=domain,
-            enable_langfuse=enable_langfuse
-        )
+        # 注意：flash_s3_enhanced只接受question参数，domain和langfuse在内部处理
+        result = await flash_s3_enhanced(question=query)
         
         if ctx:
             await ctx.report_progress(progress=90, total=100)
@@ -102,35 +96,23 @@ async def flash_search_tool(
             / server_stats["successful_searches"]
         )
         
-        # 构建响应内容
+        # 构建返回数据
         answer = result.get("answer", "")
         sources = result.get("sources", [])
         stats = result.get("stats", {})
         
-        # 文本内容
-        content_text = f"# FlashSearch 搜索结果\n\n"
-        content_text += f"**查询**: {query}\n"
-        if domain:
-            content_text += f"**领域**: {domain}\n"
-        content_text += f"**响应时间**: {response_time:.2f}秒\n\n"
-        content_text += f"## 答案\n\n{answer}\n\n"
+        if ctx:
+            await ctx.report_progress(progress=100, total=100)
+            await ctx.info(f"✅ 搜索完成: {len(answer)}字符答案, {len(sources)}个来源")
         
-        if sources:
-            content_text += f"## 信息来源 ({len(sources)}个)\n\n"
-            for i, source in enumerate(sources, 1):
-                content_text += f"{i}. **{source.get('title', '未知标题')}**\n"
-                content_text += f"   - URL: {source.get('url', 'N/A')}\n"
-                if source.get('snippet'):
-                    content_text += f"   - 摘要: {source['snippet'][:200]}...\n"
-                content_text += "\n"
-        
-        # 结构化输出
-        structured_data = {
+        # FastMCP 2.9.2 直接返回结构化数据
+        return {
+            "success": True,
             "query": query,
             "domain": domain,
             "answer": answer,
             "sources_count": len(sources),
-            "sources": sources,
+            "sources": sources[:3],  # 只返回前3个来源以减少数据量
             "stats": {
                 **stats,
                 "response_time": round(response_time, 2),
@@ -140,43 +122,22 @@ async def flash_search_tool(
             "timestamp": datetime.now().isoformat()
         }
         
-        if ctx:
-            await ctx.report_progress(progress=100, total=100)
-            await ctx.info(f"✅ 搜索完成: {len(answer)}字符答案, {len(sources)}个来源")
-        
-        return ToolResult(
-            content=[{
-                "type": "text",
-                "text": content_text
-            }],
-            structured_content=structured_data
-        )
-        
     except Exception as e:
         server_stats["failed_searches"] += 1
         
         if ctx:
             await ctx.error(f"❌ 搜索失败: {str(e)}")
         
-        error_text = f"# 搜索失败\n\n**错误**: {str(e)}\n**查询**: {query}\n**时间**: {datetime.now().isoformat()}"
-        
-        return ToolResult(
-            content=[{
-                "type": "text", 
-                "text": error_text
-            }],
-            structured_content={
-                "error": str(e),
-                "query": query,
-                "success": False,
-                "timestamp": datetime.now().isoformat()
-            }
-        )
+        return {
+            "error": str(e),
+            "query": query,
+            "success": False,
+            "timestamp": datetime.now().isoformat()
+        }
 
 @mcp.tool(
     name="search_analyze",
-    description="分析搜索查询，提供关键词优化和时间感知建议",
-    tags={"analysis", "optimization"}
+    description="分析搜索查询，提供关键词优化和时间感知建议"
 )
 async def search_analyze_tool(
     query: Annotated[str, Field(description="要分析的搜索查询")],
@@ -354,8 +315,7 @@ def generate_optimization_tips(query: str, domain: Optional[str], time_ranges: L
 # 健康检查工具
 @mcp.tool(
     name="health_check",
-    description="检查MCP服务器健康状态",
-    tags={"health", "system"}
+    description="检查MCP服务器健康状态"
 )
 async def health_check_tool(ctx: Context = None) -> Dict[str, Any]:
     """健康检查"""
@@ -378,7 +338,7 @@ if __name__ == "__main__":
     parser.add_argument("--transport", default="stdio", choices=["stdio", "http", "sse"], 
                        help="MCP传输协议 (default: stdio)")
     parser.add_argument("--host", default="127.0.0.1", help="HTTP传输主机 (default: 127.0.0.1)")
-    parser.add_argument("--port", type=int, default=9000, help="HTTP传输端口 (default: 9000)")
+    parser.add_argument("--port", type=int, default=8060, help="HTTP传输端口 (default: 8060)")
     parser.add_argument("--log-level", default="info", help="日志级别 (default: info)")
     
     args = parser.parse_args()
@@ -391,17 +351,15 @@ if __name__ == "__main__":
         mcp.run(
             transport="http",
             host=args.host,
-            port=args.port,
-            log_level=args.log_level
+            port=args.port
         )
     elif args.transport == "sse":
         print(f"🌐 SSE地址: http://{args.host}:{args.port}/sse/")
         mcp.run(
             transport="sse",
             host=args.host,
-            port=args.port,
-            log_level=args.log_level
+            port=args.port
         )
     else:
         print(f"📟 STDIO模式 (适用于本地客户端)")
-        mcp.run(transport="stdio", log_level=args.log_level)
+        mcp.run(transport="stdio")
