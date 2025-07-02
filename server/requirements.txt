@@ -14,6 +14,15 @@ asyncio-mqtt>=0.11.0
 python-dotenv>=1.0.0
 langfuse>=2.0.0
 
+# HTML解析
+beautifulsoup4>=4.11.0
+lxml>=4.9.0
+
+# 其他核心依赖
+httpx>=0.24.0
+litellm>=1.0.0
+PyYAML>=6.0.0
+
 # Optional: Enhanced features
 redis>=4.5.0  # 用于缓存和任务队列
 celery>=5.3.0  # 用于后台任务

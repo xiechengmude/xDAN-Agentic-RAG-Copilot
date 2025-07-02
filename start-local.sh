@@ -13,11 +13,32 @@ fi
 
 # 检查并安装依赖
 echo "📦 检查依赖..."
-if [ -f "server/requirements.txt" ]; then
-    pip3 install -q -r server/requirements.txt
+
+# 检查是否使用 uv
+if command -v uv &> /dev/null; then
+    echo "🚀 使用 uv 安装依赖..."
+    # 安装根目录依赖
+    if [ -f "requirements.txt" ]; then
+        uv pip install -r requirements.txt
+    fi
+    # 安装服务器特定依赖
+    if [ -f "server/requirements.txt" ]; then
+        uv pip install -r server/requirements.txt
+    fi
+    # 安装额外需要的包
+    uv pip install beautifulsoup4 lxml
 else
-    echo "❌ 未找到 server/requirements.txt"
-    exit 1
+    echo "📦 使用 pip 安装依赖..."
+    # 安装根目录依赖
+    if [ -f "requirements.txt" ]; then
+        pip3 install -q -r requirements.txt
+    fi
+    # 安装服务器特定依赖
+    if [ -f "server/requirements.txt" ]; then
+        pip3 install -q -r server/requirements.txt
+    fi
+    # 安装额外需要的包
+    pip3 install -q beautifulsoup4 lxml
 fi
 
 # 停止可能存在的旧进程
