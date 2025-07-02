@@ -30,12 +30,20 @@ print_warning() {
 }
 
 # 检测Docker Compose命令
-if command -v "docker compose" &> /dev/null; then
+# 优先检查 docker compose V2
+if docker compose version &> /dev/null; then
     DOCKER_COMPOSE="docker compose"
     print_info "使用 Docker Compose V2"
 elif command -v "docker-compose" &> /dev/null; then
+    # 检查是否是旧版本
+    if docker-compose version 2>&1 | grep -q "1\."; then
+        print_warning "检测到 Docker Compose V1 (已过时)"
+        print_info "建议使用 docker compose V2 或 Python 启动方式"
+        print_info "使用 './manage-services-v2.sh start-python' 代替"
+        exit 1
+    fi
     DOCKER_COMPOSE="docker-compose"
-    print_info "使用 Docker Compose V1"
+    print_info "使用 Docker Compose"
 else
     echo -e "${RED}[ERROR]${NC} 未找到 Docker Compose"
     echo "请安装 Docker Compose: https://docs.docker.com/compose/install/"
