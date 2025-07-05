@@ -1,0 +1,42 @@
+[
+  {
+    "index": 1,
+    "question": "授信申请接口 `applyCredit` 中的 `agreementTime` 有什么作用？格式是什么？（简单）",
+    "answer_correct": "表示用户签署授信相关协议的时间，格式为 `yyyyMMddHHmmss`，该字段为必填项，用于监管及合同合规校验。",
+    "xdan-rag-system": "根据文档1中的信息：\n\n1. `agreementTime`的作用：表示\"借款相关协议签署时间\"（必填字段）\n2. 格式要求：yyyyMMddHHmmss（14位数字，示例：20230101143000表示2023年1月1日14点30分00秒）\n\n（信息来自文档1中userInfo用户信息部分的明确参数定义）",
+    "对比评价": "✅ S3优秀 | 技术要素匹配度100.0%",
+    "技术精确度": 1.0
+  },
+  {
+    "index": 2,
+    "question": "API 中的 `repayMethod` 字段有哪些取值？与平台文档中还款方式有什么关系？（简单）",
+    "answer_correct": "取值包括 00-等额本金、01-等额本息、02-先息后本、03-等本等息。与平台的还款计划计算逻辑保持一致，用于明确每期本金/利息分摊方式。",
+    "xdan-rag-system": "根据文档1中的技术参数说明，`repayMethod`字段的取值及对应关系如下：\n\n取值：\n- \"00\"：等额本金\n- \"01\"：等额本息  \n- \"02\"：先息后本\n- \"03\"：等本等息\n\n该字段为必填参数，直接对应合作方内部定义的还款方式编码。文档未提及与平台文档的其他关联关系。",
+    "对比评价": "✅ S3优秀 | 技术要素匹配度100.0%",
+    "技术精确度": 1.0
+  },
+  {
+    "index": 3,
+    "question": "在合作方绑卡批扣模式下，智信平台发起授信会依次调用哪些接口？（中等）",
+    "answer_correct": "`checkUser`（撞库）→ `applyCertification` + `verifyCode`（绑卡）→ `applyCredit`（授信申请）→ `noticeCreditResult`（结果通知）或轮询 `queryCreditResult`",
+    "xdan-rag-system": "根据文档3的授信机构交互流程，智信平台发起授信会依次调用以下接口：\n\n1. ice-pfs-app调用ice-partner-app的`applyCredit`接口（dubbo接口）\n2. ice-partner-app调用ice-gws-app的`applyCredit`接口（dubbo接口）\n3. ice-gws-app调用机构提供的`applyCredit`接口（http接口）\n\n文档中未提及绑卡批扣模式下的额外接口调用，因此以上为完整的授信发起接口调用链。",
+    "对比评价": "❌ S3较差 | 技术要素匹配度16.7%",
+    "技术精确度": 0.16666666666666666
+  },
+  {
+    "index": 4,
+    "question": "`loanTrial` 和 `applyLoan` 接口分别用于什么？其调用链是怎样的？（中等）",
+    "answer_correct": "`loanTrial` 用于试算还款计划，`applyLoan` 用于正式提交借款申请。链路为：ice-pfs-app → ice-partner-app → ice-gws-app → 机构。",
+    "xdan-rag-system": "根据文档1提供的技术规范：\n\n1. 接口用途：\n- `loanTrial`：用于授信审批通过后的借款试算（仅处理试算逻辑，不进行准入控制）\n- `applyLoan`：文档中未找到相关信息\n\n2. 调用链技术细节（仅能基于loanTrial说明）：\n- 前置条件：必须通过授信审批（partnerCreditNo必填）\n- 输入必填参数：userId、loanApplyNo、loanTime、partnerCreditNo、productCode、loanAmt、loanPurpose、term、repayMethod\n- 输出要求：成功时必须返回agreementList（复杂对象agreement）和planInfoList（复杂对象planInfo）\n\n注：文档中未提及applyLoan接口的任何技术参数或调用关系。",
+    "对比评价": "✅ S3优秀 | 技术要素匹配度100.0%",
+    "技术精确度": 1.0
+  },
+  {
+    "index": 5,
+    "question": "`applyCredit` 接口中的 `userInfo`、`companyInfo`、`faceInfo` 字段由哪个系统采集？（中等）",
+    "answer_correct": "主要由 ice-pfs-app 在用户申请授信的过程中采集，涉及绑卡、OCR、人脸识别等节点。",
+    "xdan-rag-system": "根据文档内容：\n\n1. `userInfo` 和 `companyInfo` 字段由合作方系统采集（文档3中明确说明\"根据机构的采集范围对应提供\"）\n2. `faceInfo` 字段由合作方系统采集（文档2中说明\"可根据机构要求配置\"）\n\n未提及智信引擎主动采集这些字段。",
+    "对比评价": "❌ S3较差 | 技术要素匹配度0.0%",
+    "技术精确度": 0.0
+  }
+]

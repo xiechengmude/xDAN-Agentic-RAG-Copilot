@@ -1,0 +1,50 @@
+[
+  {
+    "index": 1,
+    "question": "授信申请接口 `applyCredit` 中的 `agreementTime` 有什么作用？格式是什么？（简单）",
+    "answer_correct": "表示用户签署授信相关协议的时间，格式为 `yyyyMMddHHmmss`，该字段为必填项，用于监管及合同合规校验。",
+    "xdan-rag-system": "根据文档1中的信息：\n\n1. `agreementTime`的作用：表示\"借款相关协议签署时间\"（必填字段）\n2. 格式要求：`yyyyMMddHHmmss`（14位数字，示例：20230101143000表示2023年1月1日14点30分00秒）\n\n参数位置：位于`userInfo`复杂对象中，属于`applyCredit`接口的入参输出部分。",
+    "对比评价": "✅ S3优秀 | 技术要素匹配度100.0%",
+    "技术精确度": 1.0
+  },
+  {
+    "index": 2,
+    "question": "API 中的 `repayMethod` 字段有哪些取值？与平台文档中还款方式有什么关系？（简单）",
+    "answer_correct": "取值包括 00-等额本金、01-等额本息、02-先息后本、03-等本等息。与平台的还款计划计算逻辑保持一致，用于明确每期本金/利息分摊方式。",
+    "xdan-rag-system": "根据文档1，`repayMethod` 字段的取值及对应关系如下：\n\n- 00：等额本金\n- 01：等额本息\n- 02：先息后本\n- 03：等本等息\n\n该字段为必填参数，直接对应合作方内部产品线的还款方式定义。文档中未提及与平台文档的其他关联关系。",
+    "对比评价": "✅ S3优秀 | 技术要素匹配度100.0%",
+    "技术精确度": 1.0
+  },
+  {
+    "index": 3,
+    "question": "在合作方绑卡批扣模式下，智信平台发起授信会依次调用哪些接口？（中等）",
+    "answer_correct": "`checkUser`（撞库）→ `applyCertification` + `verifyCode`（绑卡）→ `applyCredit`（授信申请）→ `noticeCreditResult`（结果通知）或轮询 `queryCreditResult`",
+    "xdan-rag-system": "根据文档内容，在合作方绑卡批扣模式下，智信平台发起授信会依次调用的接口如下：\n\n1. applyCredit（dubbo接口，由ice-pfs-app调用ice-partner-app）\n2. applyCredit（dubbo接口，由ice-partner-app调用ice-gws-app）\n3. applyCredit（http接口，由ice-gws-app调用机构接口）\n\n文档中未提到其他具体接口名称。",
+    "对比评价": "❌ S3较差 | 技术要素匹配度16.7%",
+    "技术精确度": 0.16666666666666666
+  },
+  {
+    "index": 4,
+    "question": "`loanTrial` 和 `applyLoan` 接口分别用于什么？其调用链是怎样的？（中等）",
+    "answer_correct": "`loanTrial` 用于试算还款计划，`applyLoan` 用于正式提交借款申请。链路为：ice-pfs-app → ice-partner-app → ice-gws-app → 机构。",
+    "xdan-rag-system": "根据文档1提供的技术信息：\n\n1. `loanTrial`接口用途：\n- 业务场景：授信审批通过后客户发起借款试算（仅处理试算逻辑，不进行准入控制）\n- 关键限制：不可添加准入类控制，若涉及准入条件更新需异步处理（通过3.5.2额度&产品变更通知）\n\n2. 调用链说明：\n文档中仅提及`loanTrial`接口，未找到关于`applyLoan`接口的任何技术参数或调用关系描述。因此：\n- `loanTrial`的完整调用依赖关系在本文档中未明确说明\n- `applyLoan`接口在文档中未找到相关信息\n\n3. 技术细节确认：\n- `loanTrial`的必填入参包括：userId、loanApplyNo、loanTime、partnerCreditNo、productCode、loanAmt、loanPurpose、term、repayMethod\n- 输出要求必须包含bankCardInfo复杂对象，成功时需返回agreementList和planInfoList\n\n注：由于文档未提供接口间调用流程图或时序说明，无法确认具体调用链。",
+    "对比评价": "✅ S3优秀 | 技术要素匹配度100.0%",
+    "技术精确度": 1.0
+  },
+  {
+    "index": 5,
+    "question": "`applyCredit` 接口中的 `userInfo`、`companyInfo`、`faceInfo` 字段由哪个系统采集？（中等）",
+    "answer_correct": "主要由 ice-pfs-app 在用户申请授信的过程中采集，涉及绑卡、OCR、人脸识别等节点。",
+    "xdan-rag-system": "文档中未明确说明 `userInfo`、`companyInfo`、`faceInfo` 字段由哪个系统采集。",
+    "对比评价": "❌ S3较差 | 技术要素匹配度0.0%",
+    "技术精确度": 0.0
+  },
+  {
+    "index": 6,
+    "question": "API 文档中 creditInfo 中的 `creditType = C` 表示什么？在系统中这个类型会如何影响借款或还款处理逻辑？（复杂）",
+    "answer_correct": "表示循环额度。在系统中，循环额度支持用户多次借款，在借款成功后仍保留可用额度，还款成功后更新可用额度，ice-core-app 系统需动态更新额度使用情况并与机构同步。",
+    "xdan-rag-system": "根据文档1中的技术参数定义：  \n\n1. **`creditType = C` 的技术含义**  \n   - 表示授信类型为**循环额度**（对应参数值 `C`，文档中明确说明 `T:一次性额度；C:循环额度`）  \n\n2. **对借款/还款处理逻辑的影响**（基于文档直接参数说明）  \n   - 文档中仅定义了 `creditType` 的枚举值（`C/T`），但未提及具体业务逻辑规则（如额度恢复、还款冲抵等）。  \n   - **结论**：文档中未找到 `C` 类型对借款/还款处理逻辑的具体影响说明。  \n\n（注：若需进一步逻辑细节，需补充业务规则文档或接口说明。）",
+    "对比评价": "❌ S3较差 | 技术要素匹配度0.0%",
+    "技术精确度": 0.0
+  }
+]

@@ -1,0 +1,26 @@
+[
+  {
+    "index": 1,
+    "question": "授信申请接口 `applyCredit` 中的 `agreementTime` 有什么作用？格式是什么？（简单）",
+    "answer_correct": "表示用户签署授信相关协议的时间，格式为 `yyyyMMddHHmmss`，该字段为必填项，用于监管及合同合规校验。",
+    "xdan-rag-system": "根据文档1中的信息：\n\n1. `agreementTime`的作用：表示\"借款相关协议签署时间\"（必填字段）\n2. 格式要求：`yyyyMMddHHmmss`（14位数字，示例：20230101143000表示2023年1月1日14点30分00秒）\n\n参数位置：位于`userInfo`复杂对象中，属于`applyCredit`接口的入参输出部分。",
+    "对比评价": "✅ S3优秀 | 技术要素匹配度100.0%",
+    "技术精确度": 1.0
+  },
+  {
+    "index": 2,
+    "question": "API 中的 `repayMethod` 字段有哪些取值？与平台文档中还款方式有什么关系？（简单）",
+    "answer_correct": "取值包括 00-等额本金、01-等额本息、02-先息后本、03-等本等息。与平台的还款计划计算逻辑保持一致，用于明确每期本金/利息分摊方式。",
+    "xdan-rag-system": "根据文档1，`repayMethod` 字段的取值及对应关系如下：\n\n- 00：等额本金\n- 01：等额本息\n- 02：先息后本\n- 03：等本等息\n\n该字段为必填参数，直接对应合作方内部产品线的还款方式定义。文档中未提及与平台文档的其他关联关系。",
+    "对比评价": "✅ S3优秀 | 技术要素匹配度100.0%",
+    "技术精确度": 1.0
+  },
+  {
+    "index": 3,
+    "question": "在合作方绑卡批扣模式下，智信平台发起授信会依次调用哪些接口？（中等）",
+    "answer_correct": "`checkUser`（撞库）→ `applyCertification` + `verifyCode`（绑卡）→ `applyCredit`（授信申请）→ `noticeCreditResult`（结果通知）或轮询 `queryCreditResult`",
+    "xdan-rag-system": "根据文档内容，在合作方绑卡批扣模式下，智信平台发起授信会依次调用的接口如下：\n\n1. applyCredit（dubbo接口，由ice-pfs-app调用ice-partner-app）\n2. applyCredit（dubbo接口，由ice-partner-app调用ice-gws-app）\n3. applyCredit（http接口，由ice-gws-app调用机构接口）\n\n文档中未提到其他具体接口名称。",
+    "对比评价": "❌ S3较差 | 技术要素匹配度16.7%",
+    "技术精确度": 0.16666666666666666
+  }
+]

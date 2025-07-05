@@ -1,0 +1,104 @@
+[
+  {
+    "question": "授信申请接口 `applyCredit` 中的 `agreementTime` 有什么作用？格式是什么？（简单）",
+    "answer_correct": "表示用户签署授信相关协议的时间，格式为 `yyyyMMddHHmmss`，该字段为必填项，用于监管及合同合规校验。",
+    "xdan-rag-system": "生成失败",
+    "对比评价": "❌ S3生成失败 | 未能获取有效答案"
+  },
+  {
+    "question": "API 中的 `repayMethod` 字段有哪些取值？与平台文档中还款方式有什么关系？（简单）",
+    "answer_correct": "取值包括 00-等额本金、01-等额本息、02-先息后本、03-等本等息。与平台的还款计划计算逻辑保持一致，用于明确每期本金/利息分摊方式。",
+    "xdan-rag-system": "生成失败",
+    "对比评价": "❌ S3生成失败 | 未能获取有效答案"
+  },
+  {
+    "question": "在合作方绑卡批扣模式下，智信平台发起授信会依次调用哪些接口？（中等）",
+    "answer_correct": "`checkUser`（撞库）→ `applyCertification` + `verifyCode`（绑卡）→ `applyCredit`（授信申请）→ `noticeCreditResult`（结果通知）或轮询 `queryCreditResult`",
+    "xdan-rag-system": "生成失败",
+    "对比评价": "❌ S3生成失败 | 未能获取有效答案"
+  },
+  {
+    "question": "`loanTrial` 和 `applyLoan` 接口分别用于什么？其调用链是怎样的？（中等）",
+    "answer_correct": "`loanTrial` 用于试算还款计划，`applyLoan` 用于正式提交借款申请。链路为：ice-pfs-app → ice-partner-app → ice-gws-app → 机构。"
+  },
+  {
+    "question": "`applyCredit` 接口中的 `userInfo`、`companyInfo`、`faceInfo` 字段由哪个系统采集？（中等）",
+    "answer_correct": "主要由 ice-pfs-app 在用户申请授信的过程中采集，涉及绑卡、OCR、人脸识别等节点。"
+  },
+  {
+    "question": "API 文档中 creditInfo 中的 `creditType = C` 表示什么？在系统中这个类型会如何影响借款或还款处理逻辑？（复杂）",
+    "answer_correct": "表示循环额度。在系统中，循环额度支持用户多次借款，在借款成功后仍保留可用额度，还款成功后更新可用额度，ice-core-app 系统需动态更新额度使用情况并与机构同步。"
+  },
+  {
+    "question": "当 `applyRepayment` 返回的 `repayStatus = P`，平台会走哪些后续处理流程？涉及哪些系统组件？(复杂)",
+    "answer_correct": "ice-core-app 会定时调用 `queryRepayResult` 查询还款状态，并根据结果更新状态、发送短信、更新还款计划。涉及组件：ice-core-app、ice-partner-app、ice-gws-app。"
+  },
+  {
+    "question": "`applyCertification` 接口链路是如何从前端一路调用至机构的？（中等）",
+    "answer_correct": "前端提交请求 → ice-pfs-app → ice-partner-app（dubbo）→ ice-gws-app（dubbo）→ 机构 HTTP 接口。其中每一层都涉及参数封装、加密加签、解密验签等处理。"
+  },
+  {
+    "question": "根据你对智信授信流程的理解，用户授信会调用API文档3.2 授信业务中的哪些接口？不会调用哪些接口？（中等）",
+    "answer_correct": "会调用的接口：3.2.1 applyCredit：用于提交授信申请（必调）；3.2.2 noticeCreditResult：机构推送授信结果（如果机构支持推送）；3.2.3 queryCreditResult：智信主动查询授信结果（补充机制）。不会调用的接口：3.2.4 queryCreditLink和3.2.5 syncCreditInfo"
+  },
+  {
+    "question": "在API文档中 2.3 数据交互规范 中提到了对请求响应较大的数据压缩，这个压缩应该是由哪个系统完成的（简单）",
+    "answer_correct": "ice-gws-app"
+  },
+  {
+    "question": "applyCredit的bankCardInfo是什么时候采集的（中等）",
+    "answer_correct": "applyCredit 的 bankCardInfo 字段是在用户进入授信流程、绑卡步骤采集的"
+  },
+  {
+    "question": "授信结果中的rejectPeriod表示多少个天内不能再申请，这个限制逻辑应该在哪个流程中做，由哪个系统执行？（复杂）",
+    "answer_correct": "限制逻辑应在授信路由流程中执行，由 ice-crp-app 完成"
+  },
+  {
+    "question": "对于从其他渠道申请过的用户，有家机构在授信申请接口中返回F来拒绝用户，这种方式是否合适？（复杂）",
+    "answer_correct": "不适合。应该在撞库接口返回REJECT来拒绝用户"
+  },
+  {
+    "question": "如果机构需要将用户的借款试算请求与借款申请过程中的绑卡请求关联起来，他应该怎么做？（复杂）",
+    "answer_correct": "机构应在借款试算接口（loanTrial）中返回 certificationCode，平台在绑卡请求（如 applyCertification、verifyCode）中携带该字段，机构通过此字段将试算与绑卡操作关联，确保同一借款流程链路。"
+  },
+  {
+    "question": "在applyLoan接口中，如果请求参数不符合机构的校验规则，那么机构应该如何返回数据？（中等）",
+    "answer_correct": "机构应在 applyLoan 接口响应中返回：applyResult = S 且 loanStatus = F 并携带 reasonCode 和 reasonMsg 指明失败原因。或者在2.5.2 业务响应报文返回code=ICE4201"
+  },
+  {
+    "question": "如果在applyLoan接口中，机构返回了applyResult = F 且 loanStatus = F，智信平台后续会如何处理这笔数据？（中等）",
+    "answer_correct": "ice-pfs-app 会将这笔借款保持为未提交状态，等待后续重试"
+  },
+  {
+    "question": "在还款申请接口 applyRepayment 中，如果机构返回 status = F，平台应该如何处理？（中等）",
+    "answer_correct": "平台会将还款状态标记为申请失败，并进入还款补处理流程，后续根据 queryRepayResult 查询结果决定是否重试或结束。"
+  },
+  {
+    "question": "机构主动调用 noticeRepayment 接口通知还款成功，平台会如何处理 loanInfo 和 planInfo？（中等）",
+    "answer_correct": "智信平台会更新借据与还款计划信息，变更还款状态为成功，并同步更新到 ice-core-app，并发送还款成功短信。"
+  },
+  {
+    "question": "对于状态为处理中的还款记录，平台是如何通过接口获取最终还款结果的？（简单）",
+    "answer_correct": "平台会定时调用 queryRepayResult 接口查询状态，更新为成功、失败或保持处理中，并据此发送短信并同步状态。"
+  },
+  {
+    "question": "noticeRepayment 接口中，机构返回 repayStatus = F，平台如何处理？（简单）",
+    "answer_correct": "平台将该还款状态标记为还款失败，记录失败原因并发送还款失败短信，同时不再查询该笔数据。"
+  },
+  {
+    "question": "什么情况下还款无需调用 applyRepayment 接口，但仍可完成还款？（中等）",
+    "answer_correct": "对于机构批扣模式，由机构自行在到期后发起批扣，并通过 noticeRepayment 主动通知智信还款结果即可。"
+  },
+  {
+    "question": "用户主动发起还款后，最终是否一定调用 queryRepayResult 接口？有没有替代路径？（中等）",
+    "answer_correct": "不一定。若机构主动调用 noticeRepayment 通知结果，平台就不再调用 queryRepayResult 接口。"
+  },
+  {
+    "question": "如果机构给用户批扣后，没有通过还款通知接口告知智信平台，那么当用户登录APP时，能否看到更新后的还款计划信息？（复杂）",
+    "answer_correct": "大概率可以看到。平台有信息同步机制，用户登录查看借据页面时，若距上次同步已超过12小时，会调用借据&还款计划查询接口（3.5.1）拉取最新还款状态。但若用户在12小时内已登录过且机构未主动通知，则可能展示的是旧数据。"
+  },
+  {
+    "question": "如果机构冻结了用户的额度，但是没有通过3.5.2接口通知额度变更，那么当用户登录APP时，是否还能发起借款？（复杂）",
+    "answer_correct": "可能可以。平台额度信息有缓存，仅在用户登录APP时每12小时最多同步一次。若机构未通过3.5.3接口通知额度变更，且用户未在冻结后重新触发额度查询，则平台仍可能使用旧额度发起借款。"
+  }
+]

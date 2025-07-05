@@ -1,0 +1,92 @@
+[
+  {
+    "index": 1,
+    "question": "授信申请接口 `applyCredit` 中的 `agreementTime` 有什么作用？格式是什么？（简单）",
+    "answer_correct": "表示用户签署授信相关协议的时间，格式为 `yyyyMMddHHmmss`，该字段为必填项，用于监管及合同合规校验。",
+    "deepseek-rag-system": "根据文档1中的技术规范，`agreementTime`参数的作用和格式如下：\n\n1. **作用**：\n   - 记录用户签署借款相关协议的时间戳（必填字段）\n   - 用于合规性验证，确保协议签署时间早于授信申请时间\n\n2. **格式**：\n   - 严格采用`yyyyMMddHHmmss`格式（14位数字）\n   - 示例：`20230815143000`表示2023年8月15日14点30分00秒\n\n3. **关联业务规则**：\n   - 该参数位于`userInfo`复杂对象中（文档1第8行起）\n   - 与`applyTime`（申请时间）存在逻辑校验关系，协议签署时间必须早于申请时间\n   - 在授信状态返回`S`(成功)时，该时间会与最终合同生效时间进行比对验证\n\n（依据来源：文档1中明确标注\"借款相关协议签署时间\"为必填字段，且格式要求与同文档中的`applyTime`、`statusTime`等时间字段保持一致的14位格式规范）",
+    "deepseek-对比评价": "✅ DeepSeek优秀 | 综合得分100.0%",
+    "deepseek-综合得分": 1.0,
+    "xdan-rag-system": "",
+    "对比评价": ""
+  },
+  {
+    "index": 2,
+    "question": "API 中的 `repayMethod` 字段有哪些取值？与平台文档中还款方式有什么关系？（简单）",
+    "answer_correct": "取值包括 00-等额本金、01-等额本息、02-先息后本、03-等本等息。与平台的还款计划计算逻辑保持一致，用于明确每期本金/利息分摊方式。",
+    "deepseek-rag-system": "根据文档1中提供的借款申请接口（`applyLoan`）参数说明，`repayMethod`字段的取值及对应关系如下：\n\n**枚举值及业务含义**：\n- `00`：等额本金\n- `01`：等额本息\n- `02`：先息后本\n- `03`：等本等息\n\n**与平台文档的关系**：\n1. 该字段为必填参数（标记为\"必填\"），用于明确借款的还款方式。\n2. 取值与文档中定义的还款方式完全对应，采用两位数字编码形式标准化传输。\n3. 合作方调用时必须严格使用上述枚举值，否则可能导致业务处理异常。\n\n**技术注意事项**：\n- 该参数在借款申请时确定，通常与授信阶段约定的还款方式保持一致。\n- 若合作方业务系统存在其他还款方式类型，需提前与智信平台进行枚举值映射对齐。\n\n（注：当前文档未提及其他关联系统如ice-core-app对该参数的处理逻辑，但根据金融系统常规设计，该参数会直接影响后续还款计划生成和资金结算流程。）",
+    "deepseek-对比评价": "✅ DeepSeek优秀 | 综合得分100.0%",
+    "deepseek-综合得分": 1.0,
+    "xdan-rag-system": "",
+    "对比评价": ""
+  },
+  {
+    "index": 3,
+    "question": "在合作方绑卡批扣模式下，智信平台发起授信会依次调用哪些接口？（中等）",
+    "answer_correct": "`checkUser`（撞库）→ `applyCertification` + `verifyCode`（绑卡）→ `applyCredit`（授信申请）→ `noticeCreditResult`（结果通知）或轮询 `queryCreditResult`",
+    "deepseek-rag-system": "根据智信平台API文档内容，在合作方绑卡批扣模式下，授信流程会依次调用以下接口（按严格时序排列）：\n\n1. **授信申请接口（3.2.1 applyCredit）**  \n   - 方法名：`applyCredit`  \n   - 提供方：合作方提供  \n   - 关键参数：  \n     ```  \n     creditApplyNo（授信申请单号）  \n     userInfo（用户基本信息，含mobile/name/idCardNo等）  \n     productCode（授信产品代码）  \n     ```  \n   - 作用：发起授信评估，返回授信结果状态（S/F/R）\n\n2. **信用评估接口（3.6.1 applyQFICO）**（*条件调用*）  \n   - 方法名：`applyQFICO`  \n   - 提供方：智信引擎提供  \n   - 触发条件：当授信申请返回需要信用评估时调用  \n   - 关键关联：  \n     ```  \n     businessNo需关联creditApplyNo  \n     type必须传\"credit\"  \n     ```  \n   - 输出：评估建议（F/P/C）影响后续流程决策\n\n3. **借款申请接口（3.3.2 applyLoan）**（*授信通过后调用*）  \n   - 方法名：`applyLoan`  \n   - 提供方：合作方提供  \n   - 前置条件：授信状态必须为S（成功）  \n   - 关键关联参数：  \n     ```  \n     partnerCreditNo（授信申请单号）  \n     loanApplyNo（与授信单号独立的新流水号）  \n     ```  \n   - 状态机逻辑：  \n     - applyResult=F时触发3.3.4结果查询  \n     - loanStatus=P/S/F决定是否重试\n\n4. **借款结果查询接口（3.3.4 queryLoanResult）**（*异步场景必调*）  \n   - 方法名：`queryLoanResult`  \n   - 触发条件：当applyLoan返回applyResult=F或loanStatus=P时  \n   - 核心作用：获取最终放款状态（含loanInfo借据信息）\n\n**系统调用链路说明**：  \n```\n前端 → ice-pfs-app（协议组装）  \n     → ice-partner-app（路由分发）  \n     → ice-gws-app（机构通信）  \n     → 合作方/机构系统\n```\n\n**关键业务规则**：  \n1. 授信与借款严格分离，需先完成授信（creditApplyNo）才能借款  \n2. 信用评估（QFICO）是可选的子流程，依赖授信结果决策  \n3. 借款申请必须携带geoInfo等反欺诈必填字段  \n4. 最终状态以loanInfo中的status（RP/OD/FP）为准\n\n> 注：文档未明确提及绑卡专用接口，推测绑卡信息通过授信/借款接口的`bankCardInfo`参数传递，符合金融合规要求的\"授信绑卡分离\"原则。",
+    "deepseek-对比评价": "⚠️ DeepSeek一般 | 综合得分53.3%",
+    "deepseek-综合得分": 0.5333333333333333,
+    "xdan-rag-system": "",
+    "对比评价": ""
+  },
+  {
+    "index": 4,
+    "question": "`loanTrial` 和 `applyLoan` 接口分别用于什么？其调用链是怎样的？（中等）",
+    "answer_correct": "`loanTrial` 用于试算还款计划，`applyLoan` 用于正式提交借款申请。链路为：ice-pfs-app → ice-partner-app → ice-gws-app → 机构。",
+    "deepseek-rag-system": "根据文档内容，以下是关于`loanTrial`和`applyLoan`接口的专业技术分析：\n\n1. **loanTrial接口**\n- **用途**：借款试算接口，用于用户在正式提交借款申请前计算还款计划\n  - 提供还款计划、协议信息等试算结果（文档3）\n  - 仅处理试算逻辑，不可添加准入控制（文档3）\n  - 若涉及准入条件更新需异步处理（文档3 2.1/2.2条款）\n- **调用链**：\n  `ice-pfs-app → ice-partner-app(loanTrial dubbo) → ice-gws-app(loanTrial dubbo) → 机构(loanTrial http)`（文档2借款试算部分）\n- **关键参数**：\n  - 必填：userId、loanApplyNo、productCode、loanAmt等（文档3入参表格）\n  - 输出包含：planInfoList(还款计划)、agreementList(协议)、yearRate(年利率)等（文档3输出表格）\n\n2. **applyLoan接口**\n- **用途**：正式借款申请接口\n  - 授信审批通过后发起（文档1场景说明）\n  - 处理状态组合：\n    - applyResult=F时触发重试机制（文档1 1.a条款）\n    - applyResult=S时根据loanStatus区分最终状态（文档1 1.b-d条款）\n- **调用链**：\n  `ice-pfs-app → ice-partner-app(applyLoan dubbo) → ice-gws-app(applyLoan dubbo) → 机构(applyLoan http)`（文档2借款提交流程）\n- **关键参数**：\n  - 必填：geoInfo(地理位置)、agreementTime(协议签署时间)等（文档1入参表格）\n  - 输出包含：partnerLoanNo(合作方流水号)、loanStatus(S/F/P)等（文档1出参表格）\n\n3. **核心差异对比**\n| 维度        | loanTrial                          | applyLoan                          |\n|-------------|-----------------------------------|-----------------------------------|\n| 业务阶段    | 借款前试算                        | 正式借款申请                      |\n| 状态影响    | 不产生实际借款状态                | 直接影响借款状态(S/F/P)          |\n| 输出重点    | 还款计划/协议文本                 | 借款流水号/放款状态               |\n| 后续动作    | 用户确认后触发applyLoan           | 触发结果查询(queryLoanResult)     |\n\n4. **系统架构要点**\n- ice-pfs-app：核心流程控制，维护借款状态机（文档2）\n- ice-partner-app：参数转换和路由（文档2流程描述）\n- ice-gws-app：协议转换和机构通信（文档2调用链路）\n- 状态同步：applyLoan成功后需通过queryLoanResult或noticeLoanResult同步状态（文档2结果查询流程）\n\n注：两个接口都需在授信审批通过后使用（文档1/3场景说明），且共享部分基础参数（如userId、loanApplyNo等）",
+    "deepseek-对比评价": "✅ DeepSeek优秀 | 综合得分100.0%",
+    "deepseek-综合得分": 1.0,
+    "xdan-rag-system": "",
+    "对比评价": ""
+  },
+  {
+    "index": 5,
+    "question": "`applyCredit` 接口中的 `userInfo`、`companyInfo`、`faceInfo` 字段由哪个系统采集？（中等）",
+    "answer_correct": "主要由 ice-pfs-app 在用户申请授信的过程中采集，涉及绑卡、OCR、人脸识别等节点。",
+    "deepseek-rag-system": "根据上下文文档分析，`applyCredit`接口中的各字段采集系统如下：\n\n1. **userInfo**（用户信息）：\n   - 采集系统：`ice-pfs-app`（产品流程系统）\n   - 依据：[文档3]明确说明ice-pfs-app负责\"用户授信申请流程\"，包括判断用户需要填写的授信信息，并记录申请状态\n\n2. **companyInfo**（单位信息）：\n   - 采集系统：`ice-pfs-app`\n   - 依据：作为授信申请的可选字段，属于用户申请流程中需要填写的信息，由流程系统负责采集\n\n3. **faceInfo**（人脸识别信息）：\n   - 采集系统：`ice-pfs-app`\n   - 关键证据：\n     - [文档2]显示人脸验证是用户申请流程的必经步骤（\"人脸验证 ➔ 提交申请到ice-pfs-app\"）\n     - [文档3]指出ice-pfs-app处理\"是否需要刷脸验证\"等流程控制\n\n补充说明：\n- 这些字段最终会通过`ice-pfs-app → ice-partner-app → ice-gws-app`的调用链路传递给机构\n- 字段的必填/可选性已在[文档1]的入参表格中明确标注（如companyInfo为可选，userInfo为必填）\n- 人脸信息作为生物特征数据，其采集需符合金融级安全要求，ice-pfs-app会集成专业的人脸识别SDK完成采集\n\n注：虽然文档未明确描述每个字段的具体采集点，但根据系统职责划分和业务流程可以得出以上结论。",
+    "deepseek-对比评价": "✅ DeepSeek优秀 | 综合得分86.7%",
+    "deepseek-综合得分": 0.8666666666666667,
+    "xdan-rag-system": "",
+    "对比评价": ""
+  },
+  {
+    "index": 6,
+    "question": "API 文档中 creditInfo 中的 `creditType = C` 表示什么？在系统中这个类型会如何影响借款或还款处理逻辑？（复杂）",
+    "answer_correct": "表示循环额度。在系统中，循环额度支持用户多次借款，在借款成功后仍保留可用额度，还款成功后更新可用额度，ice-core-app 系统需动态更新额度使用情况并与机构同步。",
+    "deepseek-rag-system": "根据提供的上下文文档，关于`creditInfo`中`creditType = C`的具体含义及其对借款/还款逻辑的影响，文档中并未明确说明该枚举值的定义。以下是基于文档内容的专业分析：\n\n1. **缺失信息说明**：\n   - 在[文档1]和[文档2]的`creditInfo`复杂对象描述中，未列出`creditType`字段的具体枚举值定义（包括`C`的含义）\n   - 文档仅提到`creditInfo`在授信成功时必填，但未展开其子字段结构\n\n2. **合理技术推断**（基于金融系统常见设计）：\n   - `creditType`可能表示额度类型，常见值如：\n     - `C`可能对应\"循环额度\"（Cyclic Credit）或\"现金类额度\"（Cash Credit）\n     - 其他可能值可能包括`T`(临时额度)/`S`(专项额度)等\n   - 若为循环额度，典型影响包括：\n     * 借款逻辑：允许多次支用，余额恢复后可重复使用\n     * 还款逻辑：可能支持部分还款、最低还款等灵活方式\n     * 计息方式：通常按日计息、随借随还\n\n3. **系统处理建议**：\n   - 需要确认智信引擎的《额度类型规范》文档\n   - 检查是否有关联接口（如`/queryCreditTypeInfo`）可获取元数据\n   - 典型调用链路可能涉及：\n     ```mermaid\n     graph LR\n     A[ice-partner-app] -->|查询| B[ice-core-app]\n     B -->|返回| C[额度类型元数据]\n     ```\n\n4. **风险提示**：\n   - 在未获得官方定义前，不建议基于假设开发\n   - 错误处理该字段可能导致：\n     - 借款申请被风控拦截（ICE3298）\n     - 还款计划计算异常（ICE3301）\n\n建议通过以下方式获取准确信息：\n1. 联系智信引擎技术支持获取《额度管理规范》\n2. 检查是否有`getDict`接口可查询字典值\n3. 在测试环境发起`creditType=C`的测试用例验证行为\n\n（注：以上推断基于行业惯例，实际应以智信平台最新文档为准）",
+    "deepseek-对比评价": "✅ DeepSeek优秀 | 综合得分100.0%",
+    "deepseek-综合得分": 1.0,
+    "xdan-rag-system": "",
+    "对比评价": ""
+  },
+  {
+    "index": 7,
+    "question": "当 `applyRepayment` 返回的 `repayStatus = P`，平台会走哪些后续处理流程？涉及哪些系统组件？(复杂)",
+    "answer_correct": "ice-core-app 会定时调用 `queryRepayResult` 查询还款状态，并根据结果更新状态、发送短信、更新还款计划。涉及组件：ice-core-app、ice-partner-app、ice-gws-app。",
+    "deepseek-rag-system": "根据文档1中描述的还款处理流程，当`applyRepayment`接口返回的`repayStatus = P`（即\"处理中\"状态）时，平台会触发以下处理流程：\n\n1. **状态流转**：\n   - ice-core-app会将还款记录状态更新为`处理中`（对应文档1中\"如果机构返回接收成功，则状态流转到`处理中`\"）\n\n2. **触发还款查询流程**：\n   - ice-core-app会通过定时任务轮询处理中状态的记录\n   - 调用链路：ice-core-app → ice-partner-app → ice-gws-app → 机构\n   - 调用接口：`queryRepayResult`（还款结果查询接口）\n   - 查询频率：文档未明确说明，但属于定时轮询机制\n\n3. **查询结果处理**：\n   - 根据机构返回的最终状态进行不同处理：\n     a) 返回成功(S)：更新为`还款成功`状态，并：\n        - 更新用户还款计划和借据信息（使用机构返回的数据）\n        - 发送还款成功短信\n     b) 返回处理中(P)：保持`处理中`状态，等待下次轮询\n     c) 返回失败(F)：更新为`还款失败`状态，发送还款失败短信\n\n4. **备选通知路径**：\n   - 同时机构可能通过主动通知路径更新状态：\n     - 调用链路：机构 → ice-gws-web → ice-core-app\n     - 调用接口：`noticeRepayment`\n     - 通知结果会覆盖当前状态（文档1中\"机构也可以主动调用...通知还款状态\"）\n\n涉及的系统组件包括：\n1. ice-core-app：核心业务处理，状态管理，定时任务触发\n2. ice-partner-app：合作方路由层，协议号补充（辅助扣款模式）\n3. ice-gws-app：机构网关服务，加解密处理\n4. 机构系统：实际执行扣款和状态反馈\n5. ice-gws-web（仅在机构主动通知时涉及）\n\n特别注意：\n- 在辅助扣款模式下，ice-partner-app会额外处理支付协议号路由（通过pcs）\n- 整个流程包含同步响应和异步轮询/通知两种状态更新机制\n- 最终状态以最后一次有效响应为准（无论是通过查询还是通知）\n\n（注：文档中未明确P状态对应的具体枚举值名称，但根据上下文推断P代表\"处理中\"状态）",
+    "deepseek-对比评价": "✅ DeepSeek优秀 | 综合得分100.0%",
+    "deepseek-综合得分": 1.0,
+    "xdan-rag-system": "",
+    "对比评价": ""
+  },
+  {
+    "index": 8,
+    "question": "`applyCertification` 接口链路是如何从前端一路调用至机构的？（中等）",
+    "answer_correct": "前端提交请求 → ice-pfs-app → ice-partner-app（dubbo）→ ice-gws-app（dubbo）→ 机构 HTTP 接口。其中每一层都涉及参数封装、加密加签、解密验签等处理。",
+    "deepseek-rag-system": "根据文档1提供的技术流程，`applyCertification`接口的完整调用链路如下（适用于机构绑卡扣款模式）：\n\n1. **前端调用**  \n   - 前端通过HTTPS调用`ice-pfs-app`暴露的RESTful API（具体接口名未在文档中体现，但属于绑卡流程的入口）\n\n2. **ice-pfs-app处理层**  \n   - 接收前端请求后，通过Dubbo协议调用`ice-partner-app`的同名Dubbo接口：  \n     ```java\n     ApplyCertificationResponse applyCertification(ApplyCertificationRequest request);\n     ```\n\n3. **ice-partner-app路由层**  \n   - 将请求透传至`ice-gws-app`的同名Dubbo接口（保持接口名和参数结构一致）\n\n4. **ice-gws-app网关层**  \n   - 执行关键安全处理：  \n     a. 对请求参数进行加密（如RSA/AES）  \n     b. 添加机构要求的签名（如SHA256WithRSA）  \n     - 通过HTTP协议调用**机构侧接口**（文档未明确机构接口URL，但属于机构提供的绑卡验证码发送API）\n\n5. **机构侧处理**  \n   - 机构接收请求后：  \n     a. 验签解密  \n     b. 执行绑卡预校验（如卡号合法性、用户身份匹配等）  \n     c. 发送短信验证码至用户手机  \n     d. 返回响应（含机构流水号等字段）\n\n6. **响应逆向回流**  \n   - `ice-gws-app`收到机构响应后：  \n     a. 验签解密响应数据  \n     b. 将标准化响应返回给`ice-partner-app`  \n   - `ice-partner-app`透传响应至`ice-pfs-app`  \n   - `ice-pfs-app`最终返回JSON响应给前端\n\n**关键技术特征**：  \n- 协议转换：HTTP → Dubbo → HTTP（机构）  \n- 安全层：加密/签名在`ice-gws-app`统一处理  \n- 透传设计：`ice-partner-app`不修改参数，仅做路由  \n- 机构隔离：不同机构的加密方式和签名规则通过配置中心动态加载  \n\n注：文档未提及具体加密算法和字段映射，实际实现需参考机构对接规范。辅助扣款模式不涉及此链路。",
+    "deepseek-对比评价": "✅ DeepSeek优秀 | 综合得分100.0%",
+    "deepseek-综合得分": 1.0,
+    "xdan-rag-system": "",
+    "对比评价": ""
+  },
+  {
+    "index": 9,
+    "question": "根据你对智信授信流程的理解，用户授信会调用API文档3.2 授信业务中的哪些接口？不会调用哪些接口？（中等）",
+    "answer_correct": "会调用的接口：3.2.1 applyCredit：用于提交授信申请（必调）；3.2.2 noticeCreditResult：机构推送授信结果（如果机构支持推送）；3.2.3 queryCreditResult：智信主动查询授信结果（补充机制）。不会调用的接口：3.2.4 queryCreditLink和3.2.5 syncCreditInfo",
+    "deepseek-rag-system": "根据文档1-3提供的智信授信流程及接口信息，用户授信过程中会调用和不会调用的接口如下分析：\n\n**会调用的接口**：\n1. **授信申请阶段**：\n   - `applyCredit`（Dubbo接口）\n     - 调用链路：`ice-pfs-app` → `ice-partner-app` → `ice-gws-app` → 机构HTTP接口\n     - 关键状态流转：`未提交` → `处理中`（文档1授信提交流程）\n     - 必填参数：`userId`、`creditApplyNo`、`applyTime`、`productCode`、`userInfo`（含`agreementTime`）（文档2入参表格）\n\n2. **授信结果查询阶段**：\n   - `queryCreditResult`（Dubbo接口）\n     - 调用链路：`ice-pfs-app` → `ice-partner-app` → `ice-gws-app` → 机构HTTP接口\n     - 状态处理逻辑：根据返回状态更新为`授信成功(S)`/`授信失败(F)`/`授信拒绝(R)`/`处理中(P)`（文档1授信结果查询流程）\n     - 必填返回字段：`status`（S/F/R/P）、`statusTime`（文档3表格）\n\n3. **授信结果通知（机构主动推送）**：\n   - `noticeCreditResult`（HTTP接口）\n     - 机构→`ice-gws-app-web`→`ice-pfs-app`的异步通知路径（文档1授信结果通知流程）\n     - 与查询结果共享同一套状态处理逻辑（文档3场景说明）\n\n**不会调用的接口**：\n1. **非授信相关接口**：\n   - 借款申请接口（如`applyLoan`）、还款接口等与资金操作相关的接口不在授信流程中调用（文档未提及）\n   \n2. **非终态通知接口**：\n   - 仅当机构返回终态（S/F/R）时才会触发`noticeCreditResult`，若状态为`处理中(P)`则仅通过查询接口轮询（文档3场景说明明确要求\"授信已终态\"）\n\n3. **其他业务接口**：\n   - 如认证接口（`applyCertification`）、合同签署接口等与授信无直接关系的接口（上下文中未出现）\n\n**关键业务逻辑补充**：\n- 状态机流转依赖`status`字段（S/F/R/P/C），其中`C(取消)`需特殊处理（文档3入参表格）\n- 异常场景需返回`resultCode`（如ICE3297资料不完善）和`rejectPeriod`（文档2常见问题说明）\n- 成功场景必须包含`creditInfo`和`productInfoList`（文档3入参表格备注）\n\n以上分析严格基于文档中出现的接口和参数，未提及的接口均视为不调用。",
+    "deepseek-对比评价": "✅ DeepSeek优秀 | 综合得分100.0%",
+    "deepseek-综合得分": 1.0,
+    "xdan-rag-system": "",
+    "对比评价": ""
+  }
+]

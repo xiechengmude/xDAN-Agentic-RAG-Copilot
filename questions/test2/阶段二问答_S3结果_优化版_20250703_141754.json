@@ -1,0 +1,194 @@
+[
+  {
+    "index": 1,
+    "question": "授信申请接口 `applyCredit` 中的 `agreementTime` 有什么作用？格式是什么？（简单）",
+    "answer_correct": "表示用户签署授信相关协议的时间，格式为 `yyyyMMddHHmmss`，该字段为必填项，用于监管及合同合规校验。",
+    "xdan-rag-system": "根据文档1中的信息：\n\n1. `agreementTime`的作用：表示\"借款相关协议签署时间\"（必填字段）\n2. 格式要求：`yyyyMMddHHmmss`（14位数字，示例：20230101143000表示2023年1月1日14点30分00秒）\n\n参数位置：位于`userInfo`复杂对象中，属于`applyCredit`接口的入参输出部分。",
+    "对比评价": "✅ S3优秀 | 技术要素匹配度100.0%",
+    "技术精确度": 1.0
+  },
+  {
+    "index": 2,
+    "question": "API 中的 `repayMethod` 字段有哪些取值？与平台文档中还款方式有什么关系？（简单）",
+    "answer_correct": "取值包括 00-等额本金、01-等额本息、02-先息后本、03-等本等息。与平台的还款计划计算逻辑保持一致，用于明确每期本金/利息分摊方式。",
+    "xdan-rag-system": "根据文档1，`repayMethod` 字段的取值及对应关系如下：\n\n- 00：等额本金\n- 01：等额本息\n- 02：先息后本\n- 03：等本等息\n\n该字段为必填参数，直接对应合作方内部产品线的还款方式定义。文档中未提及与平台文档的其他关联关系。",
+    "对比评价": "✅ S3优秀 | 技术要素匹配度100.0%",
+    "技术精确度": 1.0
+  },
+  {
+    "index": 3,
+    "question": "在合作方绑卡批扣模式下，智信平台发起授信会依次调用哪些接口？（中等）",
+    "answer_correct": "`checkUser`（撞库）→ `applyCertification` + `verifyCode`（绑卡）→ `applyCredit`（授信申请）→ `noticeCreditResult`（结果通知）或轮询 `queryCreditResult`",
+    "xdan-rag-system": "根据文档内容，在合作方绑卡批扣模式下，智信平台发起授信会依次调用的接口如下：\n\n1. applyCredit（dubbo接口，由ice-pfs-app调用ice-partner-app）\n2. applyCredit（dubbo接口，由ice-partner-app调用ice-gws-app）\n3. applyCredit（http接口，由ice-gws-app调用机构接口）\n\n文档中未提到其他具体接口名称。",
+    "对比评价": "❌ S3较差 | 技术要素匹配度16.7%",
+    "技术精确度": 0.16666666666666666
+  },
+  {
+    "index": 4,
+    "question": "`loanTrial` 和 `applyLoan` 接口分别用于什么？其调用链是怎样的？（中等）",
+    "answer_correct": "`loanTrial` 用于试算还款计划，`applyLoan` 用于正式提交借款申请。链路为：ice-pfs-app → ice-partner-app → ice-gws-app → 机构。",
+    "xdan-rag-system": "根据文档1提供的技术信息：\n\n1. `loanTrial`接口用途：\n- 业务场景：授信审批通过后客户发起借款试算（仅处理试算逻辑，不进行准入控制）\n- 关键限制：不可添加准入类控制，若涉及准入条件更新需异步处理（通过3.5.2额度&产品变更通知）\n\n2. 调用链说明：\n文档中仅提及`loanTrial`接口，未找到关于`applyLoan`接口的任何技术参数或调用关系描述。因此：\n- `loanTrial`的完整调用依赖关系在本文档中未明确说明\n- `applyLoan`接口在文档中未找到相关信息\n\n3. 技术细节确认：\n- `loanTrial`的必填入参包括：userId、loanApplyNo、loanTime、partnerCreditNo、productCode、loanAmt、loanPurpose、term、repayMethod\n- 输出要求必须包含bankCardInfo复杂对象，成功时需返回agreementList和planInfoList\n\n注：由于文档未提供接口间调用流程图或时序说明，无法确认具体调用链。",
+    "对比评价": "✅ S3优秀 | 技术要素匹配度100.0%",
+    "技术精确度": 1.0
+  },
+  {
+    "index": 5,
+    "question": "`applyCredit` 接口中的 `userInfo`、`companyInfo`、`faceInfo` 字段由哪个系统采集？（中等）",
+    "answer_correct": "主要由 ice-pfs-app 在用户申请授信的过程中采集，涉及绑卡、OCR、人脸识别等节点。",
+    "xdan-rag-system": "文档中未明确说明 `userInfo`、`companyInfo`、`faceInfo` 字段由哪个系统采集。",
+    "对比评价": "❌ S3较差 | 技术要素匹配度0.0%",
+    "技术精确度": 0.0
+  },
+  {
+    "index": 6,
+    "question": "API 文档中 creditInfo 中的 `creditType = C` 表示什么？在系统中这个类型会如何影响借款或还款处理逻辑？（复杂）",
+    "answer_correct": "表示循环额度。在系统中，循环额度支持用户多次借款，在借款成功后仍保留可用额度，还款成功后更新可用额度，ice-core-app 系统需动态更新额度使用情况并与机构同步。",
+    "xdan-rag-system": "根据文档1中的技术参数定义：  \n\n1. **`creditType = C` 的技术含义**  \n   - 表示授信类型为**循环额度**（对应参数值 `C`，文档中明确说明 `T:一次性额度；C:循环额度`）  \n\n2. **对借款/还款处理逻辑的影响**（基于文档直接参数说明）  \n   - 文档中仅定义了 `creditType` 的枚举值（`C/T`），但未提及具体业务逻辑规则（如额度恢复、还款冲抵等）。  \n   - **结论**：文档中未找到 `C` 类型对借款/还款处理逻辑的具体影响说明。  \n\n（注：若需进一步逻辑细节，需补充业务规则文档或接口说明。）",
+    "对比评价": "❌ S3较差 | 技术要素匹配度0.0%",
+    "技术精确度": 0.0
+  },
+  {
+    "index": 7,
+    "question": "当 `applyRepayment` 返回的 `repayStatus = P`，平台会走哪些后续处理流程？涉及哪些系统组件？(复杂)",
+    "answer_correct": "ice-core-app 会定时调用 `queryRepayResult` 查询还款状态，并根据结果更新状态、发送短信、更新还款计划。涉及组件：ice-core-app、ice-partner-app、ice-gws-app。",
+    "xdan-rag-system": "根据文档1中关于`applyRepayment`接口的输出参数说明：\n\n1. 当`repayStatus = P`时，表示还款状态为\"处理中\"（文档1明确标注：P 处理中）\n\n2. 后续处理流程涉及：\n   - 合作方需持续轮询还款状态（文档未明确说明轮询机制，但根据状态值含义推断）\n   - 最终状态会变更为：\n     - S（成功）\n     - F（失败）\n     - W（等待智信引擎扣款处理）\n\n3. 涉及的系统组件：\n   - 合作方系统（需处理状态变更）\n   - 智信引擎代扣系统（当withholdFlag=N时触发）\n\n文档中未明确说明具体的状态流转规则和组件交互细节，仅定义了状态值含义。",
+    "对比评价": "❌ S3较差 | 技术要素匹配度0.0%",
+    "技术精确度": 0.0
+  },
+  {
+    "index": 8,
+    "question": "`applyCertification` 接口链路是如何从前端一路调用至机构的？（中等）",
+    "answer_correct": "前端提交请求 → ice-pfs-app → ice-partner-app（dubbo）→ ice-gws-app（dubbo）→ 机构 HTTP 接口。其中每一层都涉及参数封装、加密加签、解密验签等处理。",
+    "xdan-rag-system": "根据文档内容，`applyCertification`接口的调用链路如下：\n\n1. 前端提交申请到`ice-pfs-app`\n2. `ice-pfs-app`调用`ice-partner-app`的`applyCredit`(dubbo接口)\n3. `ice-partner-app`转发请求到`ice-gws-app`的`applyCredit`(dubbo接口)\n4. `ice-gws-app`加密加签后调用机构的`applyCredit`(http接口)\n\n文档中未找到`applyCertification`接口的具体描述，以上是基于`applyCredit`接口的标准调用链路。",
+    "对比评价": "❌ S3较差 | 技术要素匹配度0.0%",
+    "技术精确度": 0.0
+  },
+  {
+    "index": 9,
+    "question": "根据你对智信授信流程的理解，用户授信会调用API文档3.2 授信业务中的哪些接口？不会调用哪些接口？（中等）",
+    "answer_correct": "会调用的接口：3.2.1 applyCredit：用于提交授信申请（必调）；3.2.2 noticeCreditResult：机构推送授信结果（如果机构支持推送）；3.2.3 queryCreditResult：智信主动查询授信结果（补充机制）。不会调用的接口：3.2.4 queryCreditLink和3.2.5 syncCreditInfo",
+    "xdan-rag-system": "根据文档内容，智信授信流程会调用的接口包括：\n1. applyCredit（文档2）- 用于提交授信申请\n2. noticeCreditResult（文档1）- 用于接收授信终态结果通知\n3. queryCreditProduct（文档3）- 用于查询授信通过的额度及产品信息\n\n不会调用的接口：文档中未提及其他接口",
+    "对比评价": "✅ S3良好 | 技术要素匹配度66.7%",
+    "技术精确度": 0.6666666666666666
+  },
+  {
+    "index": 10,
+    "question": "在API文档中 2.3 数据交互规范 中提到了对请求响应较大的数据压缩，这个压缩应该是由哪个系统完成的（简单）",
+    "answer_correct": "ice-gws-app",
+    "xdan-rag-system": "文档中未找到与\"2.3 数据交互规范\"或\"请求响应数据压缩\"相关的具体信息。",
+    "对比评价": "❌ S3较差 | 技术要素匹配度0.0%",
+    "技术精确度": 0.0
+  },
+  {
+    "index": 11,
+    "question": "applyCredit的bankCardInfo是什么时候采集的（中等）",
+    "answer_correct": "applyCredit 的 bankCardInfo 字段是在用户进入授信流程、绑卡步骤采集的",
+    "xdan-rag-system": "文档中未找到关于`applyCredit`接口的`bankCardInfo`采集时机的具体说明。上下文仅显示该参数为可选字段（标记为\"可选\"），但未提及采集阶段或触发条件的技术细节。",
+    "对比评价": "✅ S3优秀 | 技术要素匹配度100.0%",
+    "技术精确度": 1.0
+  },
+  {
+    "index": 12,
+    "question": "授信结果中的rejectPeriod表示多少个天内不能再申请，这个限制逻辑应该在哪个流程中做，由哪个系统执行？（复杂）",
+    "answer_correct": "限制逻辑应在授信路由流程中执行，由 ice-crp-app 完成",
+    "xdan-rag-system": "根据文档1中的技术参数定义：\n\n1. rejectPeriod参数出现在授信结果输出（output）部分，属于授信状态（status）为\"R:授信拒绝\"时的可选返回字段\n2. 该参数由智信引擎（credit engine）在返回授信结果时提供，值为\"审批拒绝后多少个天内不能再申请\"\n3. 限制逻辑应由调用智信引擎的合作方系统执行，具体应通过以下技术实现：\n   - 合作方系统需存储智信引擎返回的rejectPeriod值\n   - 在用户再次发起creditApply时，合作方系统应校验当前时间与上次拒绝时间的间隔是否超过rejectPeriod\n   - 若未超过，合作方系统应直接拦截申请，返回\"ICE3297 资料不完善\"或自定义错误码\n\n文档中未明确说明限制逻辑的具体执行系统名称，但根据参数流向和技术架构推断，应由调用智信引擎的合作方系统实现该限制逻辑。",
+    "对比评价": "❌ S3较差 | 技术要素匹配度0.0%",
+    "技术精确度": 0.0
+  },
+  {
+    "index": 13,
+    "question": "对于从其他渠道申请过的用户，有家机构在授信申请接口中返回F来拒绝用户，这种方式是否合适？（复杂）",
+    "answer_correct": "不适合。应该在撞库接口返回REJECT来拒绝用户",
+    "xdan-rag-system": "根据文档1中的技术规范：\n\n1. 当因\"资料不完善/身份证有效期不足等非重试类问题\"导致无法授信时，明确要求返回`status=F`（见文档1第一段表格内容）\n\n2. 该场景符合文档定义的F状态码标准含义：\"F:申请失败\"（见status参数说明部分）\n\n3. 文档未要求必须使用其他状态码（如R:授信拒绝）处理此类情况\n\n结论：该机构使用`status=F`拒绝申请在技术规范上是合规的。文档未定义必须区分\"渠道重复申请\"的特殊状态码，按现有规范应归为普通申请失败场景处理。",
+    "对比评价": "❌ S3较差 | 技术要素匹配度0.0%",
+    "技术精确度": 0.0
+  },
+  {
+    "index": 14,
+    "question": "如果机构需要将用户的借款试算请求与借款申请过程中的绑卡请求关联起来，他应该怎么做？（复杂）",
+    "answer_correct": "机构应在借款试算接口（loanTrial）中返回 certificationCode，平台在绑卡请求（如 applyCertification、verifyCode）中携带该字段，机构通过此字段将试算与绑卡操作关联，确保同一借款流程链路。",
+    "xdan-rag-system": "生成失败",
+    "对比评价": "❌ S3较差 | 技术要素匹配度0.0%",
+    "技术精确度": 0.0
+  },
+  {
+    "index": 15,
+    "question": "在applyLoan接口中，如果请求参数不符合机构的校验规则，那么机构应该如何返回数据？（中等）",
+    "answer_correct": "机构应在 applyLoan 接口响应中返回：applyResult = S 且 loanStatus = F 并携带 reasonCode 和 reasonMsg 指明失败原因。或者在2.5.2 业务响应报文返回code=ICE4201",
+    "xdan-rag-system": "根据文档1中的技术规范，在applyLoan接口中当请求参数不符合校验规则时，机构应返回以下数据：\n\n1. `code`字段必须返回\"ICE4201\"（对应3.3.2借款申请接口的特定错误码）\n2. `msg`字段需包含具体的失败原因描述\n3. 其他必填字段按常规填充：\n   - `responseNo`（同请求流水）\n   - `responseTime`\n   - `partner`（智信引擎分配的合作方编码）\n   - `version`（固定\"1.0\"）\n\n典型错误响应示例：\n```json\n{\n  \"responseNo\": \"361920480915sssss\",\n  \"responseTime\": \"1523619204809\",\n  \"partner\": \"ICE_001\",\n  \"version\": \"1.0\",\n  \"code\": \"ICE4201\",\n  \"msg\": \"缺少用户信息/合同不可用/银行卡状态异常\",\n  \"output\": \"\"\n}\n```\n\n注：文档未明确说明output字段在此场景下的具体内容要求，但根据规范当code≠200时不处理该字段。",
+    "对比评价": "✅ S3优秀 | 技术要素匹配度100.0%",
+    "技术精确度": 1.0
+  },
+  {
+    "index": 16,
+    "question": "如果在applyLoan接口中，机构返回了applyResult = F 且 loanStatus = F，智信平台后续会如何处理这笔数据？（中等）",
+    "answer_correct": "ice-pfs-app 会将这笔借款保持为未提交状态，等待后续重试",
+    "xdan-rag-system": "根据文档1和文档2的技术规范：\n\n1. 当applyLoan接口返回status=F（对应文档1中status字段定义）时：\n   - 智信平台（ice-pfs-app）会保持该笔授信记录为\"未提交\"状态（文档2授信提交流程第6步）\n   - 系统会在下次定时任务中重新调用applyCredit接口进行重试（文档2授信提交流程第7步）\n\n2. 关键参数说明：\n   - status=F表示\"申请失败\"（文档1状态字段定义）\n   - 该处理逻辑适用于所有非200的code返回（文档1第2行说明）\n\n文档中未提及loanStatus参数的具体处理逻辑，仅定义了status字段的标准处理流程。",
+    "对比评价": "❌ S3较差 | 技术要素匹配度0.0%",
+    "技术精确度": 0.0
+  },
+  {
+    "index": 17,
+    "question": "在还款申请接口 applyRepayment 中，如果机构返回 status = F，平台应该如何处理？（中等）",
+    "answer_correct": "平台会将还款状态标记为申请失败，并进入还款补处理流程，后续根据 queryRepayResult 查询结果决定是否重试或结束。",
+    "xdan-rag-system": "根据文档1和文档2的技术规范，当applyRepayment接口返回status=F时，平台处理流程如下：\n\n1. 必填字段要求：\n- result字段必须返回\"F\"（文档1明确要求）\n- repayStatus字段必须返回\"F\"（文档1表格第7行输出参数说明）\n\n2. 处理逻辑（文档2第1部分流程）：\n- ice-core-app会将还款状态流转到\"申请失败\"状态\n- 触发还款补处理流程（文档2第5部分）：\n  - 定时轮询时调用queryRepayResult接口查询状态\n  - 若机构确认失败，最终状态保持\"还款失败\"\n\n3. 失败通知要求（文档1输出参数）：\n- reasonCode必须填充（如ICE4301等标准错误码）\n- reasonMsg必须填充（用于拼接用户短信）\n\n注：文档中未提及status参数，标准返回参数为result和repayStatus，若问题中的status指代这两个参数之一，则按上述规范处理。",
+    "对比评价": "❌ S3较差 | 技术要素匹配度0.0%",
+    "技术精确度": 0.0
+  },
+  {
+    "index": 18,
+    "question": "机构主动调用 noticeRepayment 接口通知还款成功，平台会如何处理 loanInfo 和 planInfo？（中等）",
+    "answer_correct": "智信平台会更新借据与还款计划信息，变更还款状态为成功，并同步更新到 ice-core-app，并发送还款成功短信。",
+    "xdan-rag-system": "根据文档内容，noticeRepayment 接口处理 loanInfo 和 planInfo 的技术细节如下：\n\n1. loanInfo 处理规则：\n- 参数类型：复杂对象（文档1/文档2均标注为\"复杂对象loanInfo\"）\n- 是否必填：可选（文档1明确标注\"可选\"，文档2注明\"放款成功有值\"）\n- 更新条件：当借据状态变更时需同步最新数据，statusTime字段必须比上一次返回的时间更新（文档2要求\"借据有更新时，需保证比上一次返回的时间更加新\"）\n\n2. planInfoList 处理规则：\n- 参数类型：复杂对象列表（文档1标注\"复杂对象planInfo\"，文档3为完整结构）\n- 是否必填：可选（文档1注明\"还款失败时可不填\"）\n- 数据校验：智信系统会计算剩余待还=应还-实还，要求：\n  * 未结清时：应还>=实还（文档3规则1）\n  * 已结清时：应还=实还（文档3规则2）\n  * 减免金额需单独通过deductAmt/actDeductAmt传递（文档3注）\n\n3. 特殊场景：\n- 代偿还款（repayType=4）时需同步compensateType和compensateDate字段（文档2要求\"借据发生代偿时必填\"）\n- 结清状态需返回settleTime（文档2/3均标注结清时间格式为yyyyMMddHHmmss）",
+    "对比评价": "❌ S3较差 | 技术要素匹配度0.0%",
+    "技术精确度": 0.0
+  },
+  {
+    "index": 19,
+    "question": "对于状态为处理中的还款记录，平台是如何通过接口获取最终还款结果的？（简单）",
+    "answer_correct": "平台会定时调用 queryRepayResult 接口查询状态，更新为成功、失败或保持处理中，并据此发送短信并同步状态。",
+    "xdan-rag-system": "根据文档内容，平台通过以下接口获取最终还款结果：\n\n1. 还款申请接口：`applyRepayment`（合作方提供）  \n   - 输出参数`repayStatus`可返回状态：`P`（处理中）或`W`（等待智信引擎扣款处理）\n\n2. 还款通知接口：`noticeRepayment`（智信引擎提供）  \n   - 合作方需在还款最终完成后调用此接口通知结果  \n   - 必填参数`repayStatus`需更新为最终状态：`S`（成功）/`F`（失败）/`PS`（部分成功）  \n   - 若`applyRepayment`返回`P`或`W`状态，需通过`noticeRepayment`异步补传最终状态  \n\n（依据文档1和文档2的接口定义及状态流转逻辑）",
+    "对比评价": "❌ S3较差 | 技术要素匹配度0.0%",
+    "技术精确度": 0.0
+  },
+  {
+    "index": 20,
+    "question": "noticeRepayment 接口中，机构返回 repayStatus = F，平台如何处理？（简单）",
+    "answer_correct": "平台将该还款状态标记为还款失败，记录失败原因并发送还款失败短信，同时不再查询该笔数据。",
+    "xdan-rag-system": "根据文档1内容，当机构返回`repayStatus = F`时，平台处理逻辑如下：\n\n1. 必填字段：机构需同时提供`reasonCode`和`reasonMsg`（失败时必填）\n2. 结果判断：平台通过输出参数`result`判断处理状态（S/F）\n3. 重试策略：若`result=F`，机构需按自行策略重试（如24小时内每10分钟重试一次）\n\n文档中未提及平台自动重试机制，仅要求机构主动重试。",
+    "对比评价": "❌ S3较差 | 技术要素匹配度0.0%",
+    "技术精确度": 0.0
+  },
+  {
+    "index": 21,
+    "question": "什么情况下还款无需调用 applyRepayment 接口，但仍可完成还款？（中等）",
+    "answer_correct": "对于机构批扣模式，由机构自行在到期后发起批扣，并通过 noticeRepayment 主动通知智信还款结果即可。",
+    "xdan-rag-system": "根据文档1中`noticeRepayment`接口的说明，以下情况无需调用`applyRepayment`接口但仍可完成还款：\n1. 当还款是通过合作方线下或其他方式（非智信引擎发起）发生时\n2. 此时调用`noticeRepayment`接口时，`repayApplyNo`参数可不填（文档明确标注\"如果是合作方线下或其他方式发生的还款，可不填\"）\n3. 但必须提供`partnerRepayNo`（合作方还款单号）和`repayStatus=S`（还款成功状态）等必填参数\n\n技术依据：文档1中`repayApplyNo`参数的备注字段明确说明该场景。",
+    "对比评价": "❌ S3较差 | 技术要素匹配度0.0%",
+    "技术精确度": 0.0
+  },
+  {
+    "index": 22,
+    "question": "用户主动发起还款后，最终是否一定调用 queryRepayResult 接口？有没有替代路径？（中等）",
+    "answer_correct": "不一定。若机构主动调用 noticeRepayment 通知结果，平台就不再调用 queryRepayResult 接口。",
+    "xdan-rag-system": "根据文档内容：\n\n1. 用户主动发起还款后，主要涉及两个接口：\n   - 合作方调用智信引擎的 `applyRepayment` 接口（文档1）\n   - 合作方通知智信引擎还款结果的 `noticeRepayment` 接口（文档2）\n\n2. 文档中未提及 `queryRepayResult` 接口的存在或调用要求。\n\n3. 替代路径：\n   - 当合作方代扣失败时（withholdFlag=N），由智信引擎代扣处理，此时不需要调用查询接口，而是通过 `noticeRepayment` 通知最终结果（文档2场景说明）\n   - 当合作方直接扣款成功时，直接调用 `noticeRepayment` 通知结果（文档2）\n\n结论：文档中未发现必须调用 `queryRepayResult` 的要求，还款状态主要通过 `noticeRepayment` 接口主动通知。",
+    "对比评价": "❌ S3较差 | 技术要素匹配度0.0%",
+    "技术精确度": 0.0
+  },
+  {
+    "index": 23,
+    "question": "如果机构给用户批扣后，没有通过还款通知接口告知智信平台，那么当用户登录APP时，能否看到更新后的还款计划信息？（复杂）",
+    "answer_correct": "大概率可以看到。平台有信息同步机制，用户登录查看借据页面时，若距上次同步已超过12小时，会调用借据&还款计划查询接口（3.5.1）拉取最新还款状态。但若用户在12小时内已登录过且机构未主动通知，则可能展示的是旧数据。",
+    "xdan-rag-system": "根据文档内容：\n1. 机构批扣后必须调用noticeRepayment接口通知智信平台（文档2明确要求\"直接调用还款结果通知接口\"）\n2. 用户登录APP时触发的queryLoanPlan接口仅同步机构侧的借据和还款计划信息（文档3说明该接口是调用机构侧的查询接口）\n3. 文档3特别指出\"借据还款计划没有对应的通知接口\"\n\n因此技术结论为：若机构未调用noticeRepayment接口，即使机构侧已完成批扣，用户登录APP时通过queryLoanPlan获取的还款计划信息仍为未更新状态。因为智信平台仅通过noticeRepayment接口更新内部缓存数据（文档2），而queryLoanPlan是从机构侧拉取数据而非智信缓存（文档3）。",
+    "对比评价": "❌ S3较差 | 技术要素匹配度0.0%",
+    "技术精确度": 0.0
+  },
+  {
+    "index": 24,
+    "question": "如果机构冻结了用户的额度，但是没有通过3.5.2接口通知额度变更，那么当用户登录APP时，是否还能发起借款？（复杂）",
+    "answer_correct": "可能可以。平台额度信息有缓存，仅在用户登录APP时每12小时最多同步一次。若机构未通过3.5.3接口通知额度变更，且用户未在冻结后重新触发额度查询，则平台仍可能使用旧额度发起借款。",
+    "xdan-rag-system": "根据文档内容：\n\n1. 额度变更必须通过changeCreditProduct接口通知智信引擎（文档1明确说明\"合作方对用户资质进行评估之后通过该接口更新智信引擎数据\"）\n\n2. 用户登录APP时的额度查询是通过queryCreditProduct接口实现（文档2说明该接口用于\"查询最新的额度、产品信息\"）\n\n技术结论：若机构未通过changeCreditProduct接口更新冻结状态，queryCreditProduct接口返回的creditInfo将仍为冻结前的额度数据，因此用户仍可基于该数据发起借款。\n\n注：文档中未提及额度冻结的特殊处理逻辑或强制校验机制。",
+    "对比评价": "❌ S3较差 | 技术要素匹配度0.0%",
+    "技术精确度": 0.0
+  }
+]

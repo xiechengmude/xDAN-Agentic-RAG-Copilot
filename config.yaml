@@ -23,7 +23,7 @@ llm_providers:
     
   # OpenAI兼容接口（使用DeepSeek服务）
   openai:
-    api_key: sk-6a32ae2b5dc440558aa628eec3dfda07
+    api_key: sk-42ca04fcfc004430955d06505a22431b
     base_url: https://api.deepseek.com/v1
     # 实际使用deepseek-chat模型，但通过OpenAI兼容接口
     

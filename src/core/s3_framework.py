@@ -302,7 +302,7 @@ Please analyze whether the above information is sufficient to answer the questio
             if stream:
                 response_stream = await self.litellm_client.chat_completion(
                     messages=messages,
-                    model="gpt-4o-mini",
+                    use_case="generation",  # 使用generation配置
                     temperature=0.7,
                     max_tokens=2000,
                     stream=True
@@ -321,7 +321,7 @@ Please analyze whether the above information is sufficient to answer the questio
             else:
                 response = await self.litellm_client.chat_completion(
                     messages=messages,
-                    model="gpt-4o-mini",
+                    use_case="generation",  # 使用generation配置
                     temperature=0.7,
                     max_tokens=2000
                 )
