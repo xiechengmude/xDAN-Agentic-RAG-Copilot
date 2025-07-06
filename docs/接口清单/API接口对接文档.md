@@ -11,6 +11,7 @@
 - [引用文档查看](#引用文档查看)
 - [SSE实时通信](#sse实时通信)
 - [S3框架特性](#s3框架特性)
+- [时间感知功能](#时间感知功能)
 - [错误处理](#错误处理)
 - [完整示例](#完整示例)
 
@@ -58,6 +59,7 @@
    - **Search Agent**: 智能搜索查询生成
    - **Select Agent**: 信息充分性判断（使用专用模型）
    - **Synthesize**: 基于筛选文档生成答案
+   - **时间感知模块**: 自动识别时间敏感查询，优化搜索范围
 
 3. **LiteLLM Router**
    - 统一的LLM调用接口
@@ -1033,6 +1035,231 @@ while (true) {
   - S3工作流元数据
   - 用户反馈记录
   - 性能指标汇总
+
+---
+
+## 时间感知功能
+
+### 🕒 概述
+
+时间感知功能是S3框架的重要增强特性，能够智能识别和处理时间相关的查询，自动优化搜索范围，提供更精准和时效性更强的搜索结果。
+
+### 功能特点
+
+1. **自动时间识别**
+   - 智能检测查询中的时间敏感关键词
+   - 支持的时间词：`最近`、`最新`、`近期`、`今年`、`去年`、`本季度`、`上季度`等
+   - 自动将模糊时间概念转换为精确时间范围
+
+2. **智能时间转换**
+   - 相对时间到绝对时间的自动转换
+   - 动态计算时间范围（考虑当前时间）
+   - 生成搜索优化算子（`after:`、`before:`等）
+
+3. **财报周期理解**
+   - 智能推断最新财报发布周期
+   - 考虑1-2个月的财报发布延迟
+   - 自动生成财报相关搜索关键词
+
+4. **市场状态感知**
+   - 实时判断市场交易状态
+   - 支持的状态：`交易时间`、`盘后时间`、`休市时间`
+   - 为金融查询提供时间上下文
+
+### 启用时间感知功能
+
+#### 环境变量配置
+```bash
+# 启用时间感知功能
+ENABLE_TIME_AWARE=true
+TIME_ZONE=Asia/Shanghai
+```
+
+#### YAML配置
+```yaml
+s3_framework:
+  time_aware:
+    enabled: true
+    timezone: "Asia/Shanghai"
+    
+    # 相对时间词映射
+    relative_terms:
+      最近: 90      # 最近 = 90天
+      最新: 30      # 最新 = 30天
+      近期: 180     # 近期 = 180天
+      今年: "ytd"   # 今年 = 年初至今
+    
+    # 财报发布延迟设置
+    financial_report_delay: 2
+    
+    # 市场交易时间
+    market_hours:
+      open: "09:00"
+      close: "15:00"
+      timezone: "Asia/Shanghai"
+```
+
+### API响应增强
+
+当启用时间感知功能后，API响应会包含额外的时间上下文信息：
+
+```json
+{
+  "code": 0,
+  "message": "Success",
+  "data": {
+    "answer": "根据最近3个月的数据分析...",
+    "reference": {
+      "search_rounds": 2,
+      "search_process": [
+        {
+          "round": 1,
+          "query": "after:2025-04-06 before:2025-07-06 股市表现",
+          "agent_decision": "继续搜索获取更多细节",
+          "time_context": {
+            "original_term": "最近",
+            "converted_range": "2025-04-06 至 2025-07-06",
+            "description": "最近3个月",
+            "search_operators": ["after:2025-04-06", "before:2025-07-06"]
+          }
+        }
+      ]
+    },
+    "time_context": {
+      "query_time": "2025-07-06 14:30:00",
+      "time_zone": "Asia/Shanghai",
+      "market_status": "交易时间",
+      "current_quarter": "2025Q3",
+      "latest_financial_quarter": "2025Q2"
+    }
+  }
+}
+```
+
+### 时间感知查询示例
+
+#### 1. 相对时间查询
+```bash
+curl -X POST "http://localhost:8050/api/v1/conversations/{conversation_id}/messages" \
+  -H "Authorization: Bearer xDAN-RAG-Service-Demo-Key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "message": "最近的股市表现如何？",
+    "stream": false
+  }'
+```
+
+**系统自动处理**：
+- 检测到"最近"关键词
+- 转换为具体时间范围：2025-04-06 至 2025-07-06
+- 添加搜索算子：`after:2025-04-06 before:2025-07-06`
+
+#### 2. 财报查询
+```bash
+curl -X POST "http://localhost:8050/api/v1/conversations/{conversation_id}/messages" \
+  -H "Authorization: Bearer xDAN-RAG-Service-Demo-Key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "message": "最新季度财报分析",
+    "stream": false
+  }'
+```
+
+**系统自动处理**：
+- 智能推断最新财报周期：2025Q2（考虑发布延迟）
+- 生成财报搜索关键词：["2025年第二季度", "2025 Q2", "2025年二季报"]
+
+#### 3. 今年数据查询
+```bash
+curl -X POST "http://localhost:8050/api/v1/conversations/{conversation_id}/messages" \
+  -H "Authorization: Bearer xDAN-RAG-Service-Demo-Key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "message": "今年的市场趋势分析",
+    "stream": false
+  }'
+```
+
+**系统自动处理**：
+- 检测到"今年"关键词
+- 转换为年初至今：2025-01-01 至 2025-07-06
+- 添加搜索算子：`after:2025-01-01`
+
+### 健康检查API
+
+检查时间感知功能状态：
+
+```bash
+curl -X GET "http://localhost:8050/api/v1/health" \
+  -H "Authorization: Bearer xDAN-RAG-Service-Demo-Key"
+```
+
+**响应示例**：
+```json
+{
+  "status": "healthy",
+  "timestamp": "2025-07-06T14:30:00+08:00",
+  "features": {
+    "time_aware": {
+      "enabled": true,
+      "timezone": "Asia/Shanghai",
+      "market_status": "交易时间",
+      "supported_terms": ["最近", "最新", "近期", "今年", "去年"],
+      "current_quarter": "2025Q3",
+      "latest_financial_quarter": "2025Q2"
+    }
+  }
+}
+```
+
+### 调试模式
+
+启用调试模式查看时间感知处理详情：
+
+```bash
+curl -X POST "http://localhost:8050/api/v1/conversations/{conversation_id}/messages" \
+  -H "Authorization: Bearer xDAN-RAG-Service-Demo-Key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "message": "最近的市场动态",
+    "stream": false,
+    "debug": true
+  }'
+```
+
+调试响应将包含详细的时间处理信息：
+- 时间词识别结果
+- 时间范围计算过程
+- 搜索算子生成逻辑
+- 市场状态判断依据
+
+### 时间感知配置项
+
+| 配置项 | 默认值 | 说明 |
+|--------|--------|------|
+| `enabled` | `true` | 是否启用时间感知功能 |
+| `timezone` | `Asia/Shanghai` | 时区设置 |
+| `relative_terms.最近` | `90` | "最近"映射的天数 |
+| `relative_terms.最新` | `30` | "最新"映射的天数 |
+| `relative_terms.近期` | `180` | "近期"映射的天数 |
+| `financial_report_delay` | `2` | 财报发布延迟月数 |
+| `market_hours.open` | `09:00` | 市场开盘时间 |
+| `market_hours.close` | `15:00` | 市场收盘时间 |
+| `debug` | `false` | 调试模式开关 |
+
+### 优势与应用场景
+
+#### 优势
+1. **提升查询准确性**：自动过滤过时信息，专注于时效性强的内容
+2. **用户体验友好**：无需手动指定时间范围，自然语言即可
+3. **智能化程度高**：理解财报周期、市场状态等专业时间概念
+4. **灵活可配置**：支持自定义时间词映射和业务规则
+
+#### 适用场景
+- **金融分析**：股市动态、财报分析、市场趋势
+- **新闻资讯**：最新新闻、时事热点、行业动态
+- **业务报告**：季度总结、年度分析、月度数据
+- **技术文档**：最新版本、更新日志、发布说明
 
 ---
 

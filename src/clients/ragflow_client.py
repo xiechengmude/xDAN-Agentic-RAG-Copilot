@@ -4,11 +4,14 @@ RAGFlow客户端实现
 提供S3框架需要的核心检索功能
 """
 
+import os
 import requests
 import logging
 from typing import List, Dict, Any, Optional
 
+# Configure logging for this module
 logger = logging.getLogger(__name__)
+logger.setLevel(getattr(logging, os.getenv('LOG_LEVEL', 'INFO').upper(), logging.INFO))
 
 class RAGFlowClient:
     """

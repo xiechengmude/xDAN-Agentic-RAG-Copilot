@@ -35,7 +35,9 @@ except:
     sys.path.append(str(Path(__file__).parent.parent.parent))
     from src.core.config_loader import get_config
 
+# Configure logging for this module
 logger = logging.getLogger(__name__)
+logger.setLevel(getattr(logging, os.getenv('LOG_LEVEL', 'INFO').upper(), logging.INFO))
 
 class LiteLLMSDKClientV2:
     """

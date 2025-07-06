@@ -4,13 +4,17 @@ S3框架核心实现（Search-Select-Synthesize）
 基于架构文档的Agentic-RAG-Service设计
 """
 
+import os
 import logging
 import json
 import re
 from typing import List, Dict, Any, Optional, Tuple, AsyncGenerator
 from datetime import datetime
+from src.core.time_aware_prompt import TimeAwarePrompt
 
+# Configure logging for this module
 logger = logging.getLogger(__name__)
+logger.setLevel(getattr(logging, os.getenv('LOG_LEVEL', 'INFO').upper(), logging.INFO))
 
 class S3FrameworkAgent:
     """
@@ -45,10 +49,35 @@ Note: Only the content between <important_info> will be used by the generation m
         """
         self.ragflow_client = ragflow_client
         self.litellm_client = litellm_sdk_client
+        self.time_aware = TimeAwarePrompt()
+        
+        # 时间敏感关键词列表
+        self.time_keywords = {
+            '今天': 'today',
+            '昨天': 'yesterday',
+            '前天': 'day_before_yesterday',
+            '明天': 'tomorrow',
+            '本周': 'this_week',
+            '上周': 'last_week',
+            '这周': 'this_week',
+            '本月': 'this_month',
+            '上月': 'last_month',
+            '这个月': 'this_month',
+            '上个月': 'last_month',
+            '今年': 'this_year',
+            '去年': 'last_year',
+            '最新': 'latest',
+            '最近': 'recent',
+            '当前': 'current',
+            '现在': 'now',
+            '目前': 'current',
+            '近期': 'recent'
+        }
         
         logger.info("S3框架智能体初始化完成")
         logger.info("RAGFlow: 负责检索和知识库管理")
         logger.info("LiteLLM SDK: 内核服务，负责智能体推理和答案生成")
+        logger.info("时间感知功能已启用")
 
     def format_search_results(self, chunks: List[Dict], doc_id_start: int = 1) -> Tuple[str, Dict[int, Dict]]:
         """
@@ -132,6 +161,87 @@ Note: Only the content between <important_info> will be used by the generation m
         
         return decision
 
+    def detect_time_sensitive_keywords(self, text: str) -> List[str]:
+        """
+        检测文本中的时间敏感关键词
+        
+        Args:
+            text: 待检测的文本
+            
+        Returns:
+            检测到的时间关键词列表
+        """
+        detected_keywords = []
+        for keyword in self.time_keywords:
+            if keyword in text:
+                detected_keywords.append(keyword)
+        return detected_keywords
+
+    def enhance_query_with_time_context(self, query: str, time_keywords: List[str]) -> str:
+        """
+        根据时间敏感关键词增强查询
+        
+        Args:
+            query: 原始查询
+            time_keywords: 检测到的时间关键词
+            
+        Returns:
+            增强后的查询
+        """
+        if not time_keywords:
+            return query
+            
+        # 获取当前时间信息
+        time_info = self.time_aware.get_current_time_info()
+        
+        # 构建时间上下文
+        time_context_parts = []
+        
+        for keyword in time_keywords:
+            if keyword in ['今天', '当前', '现在', '目前']:
+                time_context_parts.append(f"日期：{time_info['current_date']}")
+            elif keyword == '昨天':
+                yesterday = datetime.strptime(time_info['current_date'], '%Y-%m-%d') - datetime.timedelta(days=1)
+                time_context_parts.append(f"昨天：{yesterday.strftime('%Y-%m-%d')}")
+            elif keyword == '前天':
+                day_before = datetime.strptime(time_info['current_date'], '%Y-%m-%d') - datetime.timedelta(days=2)
+                time_context_parts.append(f"前天：{day_before.strftime('%Y-%m-%d')}")
+            elif keyword == '明天':
+                tomorrow = datetime.strptime(time_info['current_date'], '%Y-%m-%d') + datetime.timedelta(days=1)
+                time_context_parts.append(f"明天：{tomorrow.strftime('%Y-%m-%d')}")
+            elif keyword in ['本周', '这周']:
+                time_context_parts.append(f"本周：{time_info['week_start']} 至 {time_info['week_end']}")
+            elif keyword == '上周':
+                last_week_start = datetime.strptime(time_info['week_start'], '%Y-%m-%d') - datetime.timedelta(days=7)
+                last_week_end = datetime.strptime(time_info['week_end'], '%Y-%m-%d') - datetime.timedelta(days=7)
+                time_context_parts.append(f"上周：{last_week_start.strftime('%Y-%m-%d')} 至 {last_week_end.strftime('%Y-%m-%d')}")
+            elif keyword in ['本月', '这个月']:
+                time_context_parts.append(f"本月：{time_info['month_start']} 至 {time_info['month_end']}")
+            elif keyword in ['上月', '上个月']:
+                # 计算上个月的日期范围
+                current_month_start = datetime.strptime(time_info['month_start'], '%Y-%m-%d')
+                last_month_end = current_month_start - datetime.timedelta(days=1)
+                last_month_start = last_month_end.replace(day=1)
+                time_context_parts.append(f"上月：{last_month_start.strftime('%Y-%m-%d')} 至 {last_month_end.strftime('%Y-%m-%d')}")
+            elif keyword in ['最新', '最近', '近期']:
+                # 最近7天
+                recent_start = datetime.strptime(time_info['current_date'], '%Y-%m-%d') - datetime.timedelta(days=7)
+                time_context_parts.append(f"最近7天：{recent_start.strftime('%Y-%m-%d')} 至 {time_info['current_date']}")
+        
+        # 去重时间上下文
+        time_context_parts = list(dict.fromkeys(time_context_parts))
+        
+        # 构建增强的查询
+        if time_context_parts:
+            time_context = "；".join(time_context_parts)
+            enhanced_query = f"{query} (时间范围：{time_context})"
+            logger.info(f"[时间感知] 原始查询：{query}")
+            logger.info(f"[时间感知] 检测到时间关键词：{time_keywords}")
+            logger.info(f"[时间感知] 增强后查询：{enhanced_query}")
+            return enhanced_query
+        else:
+            return query
+
     async def search_phase(self, question: str, dataset_ids: List[str], 
                           top_k: int = 10, similarity_threshold: float = 0.1) -> Tuple[List[Dict], bool]:
         """
@@ -153,9 +263,18 @@ Note: Only the content between <important_info> will be used by the generation m
             logger.info(f"[S3_TRACE] - RAGFlow client API URL: {self.ragflow_client.api_url}")
             logger.info(f"[S3_TRACE] - RAGFlow client API Key: {self.ragflow_client.api_key}")
             
+            # 检测时间敏感关键词
+            time_keywords = self.detect_time_sensitive_keywords(question)
+            
+            # 如果检测到时间关键词，增强查询
+            if time_keywords:
+                enhanced_question = self.enhance_query_with_time_context(question, time_keywords)
+            else:
+                enhanced_question = question
+            
             # 使用RAGFlow进行检索
             result = self.ragflow_client.retrieve_chunks(
-                question=question,
+                question=enhanced_question,
                 dataset_ids=dataset_ids,
                 page_size=top_k
             )
@@ -373,6 +492,11 @@ Please analyze whether the above information is sufficient to answer the questio
                     # 使用上一轮智能体建议的查询
                     last_decision = workflow_result["rounds"][-1]["decision"]
                     search_query = last_decision.get("next_query", question)
+                    
+                    # 检测新查询中的时间关键词并增强
+                    time_keywords = self.detect_time_sensitive_keywords(search_query)
+                    if time_keywords:
+                        search_query = self.enhance_query_with_time_context(search_query, time_keywords)
                 
                 search_results, search_success = await self.search_phase(
                     search_query, dataset_ids, top_k

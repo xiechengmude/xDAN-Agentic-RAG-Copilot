@@ -37,11 +37,13 @@ from src.clients.ragflow_client import RAGFlowClient
 from src.services.s3_service import S3Service
 
 # Configure logging
+log_level = os.getenv('LOG_LEVEL', 'INFO').upper()
 logging.basicConfig(
-    level=logging.INFO,
+    level=getattr(logging, log_level, logging.INFO),
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+logger.info(f"Logging level set to: {log_level}")
 
 # Load configuration
 config = get_config()

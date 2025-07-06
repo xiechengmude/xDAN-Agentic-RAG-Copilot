@@ -4,12 +4,15 @@
 创建S3服务实例
 """
 
+import os
 import logging
 from typing import Dict, Any, Optional
 from src.core.config_loader import get_config
 from src.services.s3_service import S3Service, create_s3_service
 
+# Configure logging for this module
 logger = logging.getLogger(__name__)
+logger.setLevel(getattr(logging, os.getenv('LOG_LEVEL', 'INFO').upper(), logging.INFO))
 
 class ServiceFactory:
     """服务工厂类"""

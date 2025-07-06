@@ -5,12 +5,15 @@ S3服务实现
 """
 
 from typing import List, Dict, Any, Optional, AsyncGenerator
+import os
 import logging
 from src.core.s3_framework import S3FrameworkAgent
 from src.clients.litellm_client import LiteLLMSDKClientV2
 from src.clients.ragflow_client import RAGFlowClient
 
+# Configure logging for this module
 logger = logging.getLogger(__name__)
+logger.setLevel(getattr(logging, os.getenv('LOG_LEVEL', 'INFO').upper(), logging.INFO))
 
 class S3Service:
     """
