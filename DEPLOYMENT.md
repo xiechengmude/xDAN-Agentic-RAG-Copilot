@@ -33,35 +33,38 @@ cp .env.example .env
 
 ### 4. 启动API服务器
 
-#### 方法1: 使用测试服务器（推荐用于开发和测试）
+#### 快速启动（推荐）
+
+```bash
+./start.sh
+```
+
+这是统一的启动脚本，会：
+- 自动禁用本地代理，避免外部API调用问题
+- 启动FlashSearch API服务器在 `http://localhost:8060`
+- 不需要数据库，开箱即用
+
+#### 开发测试模式
 
 ```bash
 cd tests/v1.0
 python3 test_api_server_real.py
 ```
 
-服务器将在 `http://localhost:8000` 启动。
-
-#### 方法2: 使用启动脚本（推荐用于生产环境）
-
-```bash
-./start-flash-api-no-db.sh
-```
-
-服务器将在 `http://localhost:8060` 启动。
+测试服务器将在 `http://localhost:8000` 启动。
 
 ## API 使用说明
 
 ### 健康检查
 
 ```bash
-curl http://localhost:8000/health
+curl http://localhost:8060/health
 ```
 
 ### 搜索API
 
 ```bash
-curl -X POST "http://localhost:8000/api/v1/search" \
+curl -X POST "http://localhost:8060/api/v1/search" \
   -H "Content-Type: application/json" \
   -d '{
     "question": "什么是人工智能？",
