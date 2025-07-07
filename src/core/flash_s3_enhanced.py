@@ -262,7 +262,7 @@ class FlashS3Enhanced(FlashSearchEngine):
         self.time_budget = self.config["time_budget"]
         
         # 应用模式配置到搜索引擎
-        apply_search_mode_config(self.search_engine, self.config)
+        apply_search_mode_config(self, self.config)
         
         # 记录当前模式
         logger.info(f"FlashS3Enhanced initialized with mode: {mode} ({self.config['name']})")
@@ -287,9 +287,8 @@ class FlashS3Enhanced(FlashSearchEngine):
                 # 扩展搜索
                 task = self.search(question, use_alternative_strategy=True)
             elif strategy == "recent":
-                # 时间敏感搜索
-                recent_question = f"最新 {question} {datetime.now().year}"
-                task = self.search(recent_question)
+                # 时间敏感搜索 - 简化查询
+                task = self.search(question)
             elif strategy == "deep":
                 # 深度搜索（添加专业术语）
                 deep_question = self._enhance_with_domain_terms(question)

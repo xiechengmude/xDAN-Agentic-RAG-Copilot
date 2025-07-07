@@ -1,0 +1,14 @@
+# RAG Tool Service 依赖项
+# 在新项目中运行: pip install -r requirements.txt
+
+# 向量数据库客户端
+qdrant-client>=1.7.0
+
+# HTTP请求
+requests>=2.31.0
+
+# 数值计算
+numpy>=1.24.0
+
+# 可选：如果需要更好的日志
+rich>=13.0.0
