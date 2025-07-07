@@ -6,9 +6,11 @@ FlashSearch FastAPI REST Server
 
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, AsyncGenerator
 import asyncio
+import json
 import sys
 import os
 from datetime import datetime
@@ -218,6 +220,97 @@ async def execute_background_search(task_id: str, request: SearchRequest):
         
     except Exception as e:
         print(f"后台任务 {task_id} 失败: {e}")
+
+@app.post("/search/stream")
+async def search_stream(request: SearchRequest):
+    """
+    SSE流式搜索接口
+    
+    Args:
+        request: 搜索请求参数
+        
+    Returns:
+        StreamingResponse: Server-Sent Events 流式响应
+    """
+    async def generate_search_events() -> AsyncGenerator[str, None]:
+        """生成搜索事件流"""
+        start_time = asyncio.get_event_loop().time()
+        
+        try:
+            # 发送开始事件
+            yield f"data: {json.dumps({'type': 'start', 'message': '开始搜索...', 'query': request.query, 'mode': request.mode, 'timestamp': datetime.now().isoformat()}, ensure_ascii=False)}\n\n"
+            
+            # 发送搜索状态事件
+            yield f"data: {json.dumps({'type': 'searching', 'message': '正在执行S3架构搜索...', 'stage': 'search', 'timestamp': datetime.now().isoformat()}, ensure_ascii=False)}\n\n"
+            
+            # 模拟搜索进度
+            await asyncio.sleep(1)
+            yield f"data: {json.dumps({'type': 'progress', 'message': '搜索阶段完成，开始选择相关内容...', 'stage': 'select', 'progress': 33, 'timestamp': datetime.now().isoformat()}, ensure_ascii=False)}\n\n"
+            
+            await asyncio.sleep(1)
+            yield f"data: {json.dumps({'type': 'progress', 'message': '选择阶段完成，开始生成答案...', 'stage': 'synthesize', 'progress': 66, 'timestamp': datetime.now().isoformat()}, ensure_ascii=False)}\n\n"
+            
+            # 执行实际搜索
+            logger.info(f"🔍 [SSE] 开始流式搜索: {request.query[:100]}...")
+            result = await flash_s3_enhanced(question=request.query, mode=request.mode)
+            
+            # 计算响应时间
+            response_time = asyncio.get_event_loop().time() - start_time
+            
+            # 发送搜索结果
+            yield f"data: {json.dumps({'type': 'result', 'message': '搜索完成', 'progress': 100, 'timestamp': datetime.now().isoformat()}, ensure_ascii=False)}\n\n"
+            
+            # 发送答案（分块发送以模拟流式输出）
+            answer = result.get("answer", "")
+            chunk_size = 100  # 每次发送100字符
+            
+            for i in range(0, len(answer), chunk_size):
+                chunk = answer[i:i+chunk_size]
+                yield f"data: {json.dumps({'type': 'answer_chunk', 'content': chunk, 'is_final': i + chunk_size >= len(answer), 'timestamp': datetime.now().isoformat()}, ensure_ascii=False)}\n\n"
+                await asyncio.sleep(0.1)  # 模拟流式输出延迟
+            
+            # 发送来源信息
+            sources = result.get("sources", [])
+            for idx, source in enumerate(sources):
+                yield f"data: {json.dumps({'type': 'source', 'index': idx + 1, 'source': source, 'timestamp': datetime.now().isoformat()}, ensure_ascii=False)}\n\n"
+                await asyncio.sleep(0.2)
+            
+            # 发送统计信息
+            stats = {
+                **result.get("stats", {}),
+                "response_time": round(response_time, 2),
+                "api_version": "2.5.0"
+            }
+            yield f"data: {json.dumps({'type': 'stats', 'stats': stats, 'timestamp': datetime.now().isoformat()}, ensure_ascii=False)}\n\n"
+            
+            # 发送完成事件
+            yield f"data: {json.dumps({'type': 'done', 'message': '搜索完成', 'response_time': round(response_time, 2), 'timestamp': datetime.now().isoformat()}, ensure_ascii=False)}\n\n"
+            
+            logger.info(f"✅ [SSE] 流式搜索完成: {len(answer)}字符, {len(sources)}来源, {response_time:.2f}s")
+            
+        except Exception as e:
+            # 发送错误事件
+            error_time = asyncio.get_event_loop().time() - start_time
+            error_data = {
+                'type': 'error',
+                'error': str(e),
+                'query': request.query,
+                'response_time': round(error_time, 2),
+                'timestamp': datetime.now().isoformat()
+            }
+            yield f"data: {json.dumps(error_data, ensure_ascii=False)}\n\n"
+            logger.error(f"❌ [SSE] 流式搜索失败: {str(e)}")
+    
+    return StreamingResponse(
+        generate_search_events(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Headers": "*",
+        }
+    )
 
 # 验证端点
 class ValidateRequest(BaseModel):
