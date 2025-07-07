@@ -38,10 +38,10 @@ async def lifespan(app: FastAPI):
     # 创建LiteLLM客户端
     clients['litellm'] = EnhancedLiteLLMClient()
     
-    # 创建DeepSearch框架实例（使用轻量版v1.2.1）
+    # 创建DeepSearch框架实例（使用增强版v1.3，集成BrightData SERP优化）
     clients['deepsearch'] = DeepSearchFramework(
         litellm_client=clients['litellm'],
-        prompt_version="v1.2.1",
+        prompt_version="v1.3",
         enable_time_aware=True
     )
     
