@@ -1,6 +1,6 @@
 """
-BrightData客户端 - 高性能异步实现
-支持Google搜索、学术搜索、新闻搜索等
+BrightData客户端 - SERP API优化版
+基于BrightData SERP API，支持原生JSON解析和高级搜索功能
 """
 
 import aiohttp
@@ -19,7 +19,7 @@ ds_logger = get_logger(__name__)
 
 
 class BrightDataAsyncClient:
-    """高性能异步BrightData客户端"""
+    """高性能异步BrightData客户端 - SERP API优化版"""
     
     def __init__(self, api_key: str, zone: str = "xdan_search_searp", 
                  max_concurrent: int = 5, timeout: int = 30):
@@ -34,7 +34,9 @@ class BrightDataAsyncClient:
         """
         self.api_key = api_key
         self.zone = zone
-        self.base_url = "https://api.brightdata.com/request"
+        # 使用SERP专用API端点
+        self.serp_url = "https://api.brightdata.com/serp/req"
+        self.result_url = "https://api.brightdata.com/serp/get_result"
         self.headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json"
@@ -43,7 +45,7 @@ class BrightDataAsyncClient:
         self.timeout = aiohttp.ClientTimeout(total=timeout)
         self.session = None
         
-        logger.info(f"BrightData异步客户端初始化，zone: {zone}, 最大并发: {max_concurrent}")
+        logger.info(f"BrightData SERP客户端初始化，zone: {zone}, 最大并发: {max_concurrent}")
     
     async def __aenter__(self):
         """异步上下文管理器入口"""
@@ -57,17 +59,20 @@ class BrightDataAsyncClient:
     
     async def search(self, query: str, **kwargs) -> Dict[str, any]:
         """
-        异步执行搜索
+        异步执行搜索 - 使用SERP API优化版本，集成SearchStrategy
         
         Args:
             query: 搜索查询
             **kwargs: 搜索选项
-                - search_type: web/news/academic/images/videos
-                - num_results: 结果数量
+                - search_type: web/news/academic/images/videos/shopping
+                - num_results: 结果数量 (默认10)
                 - date_range: 时间范围(h/d/w/m/y)
-                - language: 语言代码
-                - country: 国家代码
-                - format: raw/json
+                - language: 语言代码 (默认en)
+                - country: 国家代码 (默认us)
+                - page: 页码 (默认1)
+                - location: 地理位置
+                - device: desktop/mobile/ios/android
+                - use_strategy: 是否使用SearchStrategy优化 (默认True)
         
         Returns:
             搜索结果字典
@@ -76,62 +81,97 @@ class BrightDataAsyncClient:
             start_time = time.time()
             
             try:
-                # 构建搜索URL
-                search_url = self._build_search_url(query, kwargs)
-                logger.debug(f"搜索URL: {search_url}")
+                # 如果启用策略优化，则使用SearchStrategy
+                use_strategy = kwargs.get('use_strategy', True)
+                original_query = query
                 
-                ds_logger.log_input("BrightData搜索", {
-                    "query": query,
-                    "search_url": search_url,
-                    "options": kwargs
+                if use_strategy:
+                    from ..core.search_strategy import search_strategy
+                    enhanced_params = search_strategy.get_enhanced_search_params(query)
+                    
+                    # 使用策略优化的查询
+                    query = enhanced_params['query']
+                    
+                    # 合并策略生成的参数和用户传入的参数（用户参数优先）
+                    strategy_params = enhanced_params['serp_params']
+                    for key, value in strategy_params.items():
+                        if key not in kwargs:  # 只在用户未指定时使用策略参数
+                            kwargs[key] = value
+                    
+                    logger.info(f"[策略优化] {original_query} → {query}")
+                    logger.debug(f"[策略参数] {strategy_params}")
+                
+                # 构建SERP API参数
+                search_params = self._build_serp_params(query, kwargs)
+                logger.debug(f"SERP参数: {search_params}")
+                
+                ds_logger.log_input("BrightData SERP搜索", {
+                    "original_query": original_query,
+                    "optimized_query": query,
+                    "serp_params": search_params,
+                    "options": kwargs,
+                    "strategy_used": use_strategy
                 })
                 
                 # 准备请求数据
                 data = {
-                    "zone": self.zone,
-                    "url": search_url,
-                    "format": kwargs.get("format", "raw")
+                    "country": kwargs.get("country", "us").lower(),
+                    "query": search_params
                 }
                 
-                # 确保session存在且未关闭
-                if not self.session or self.session.closed:
+                # 确保session存在
+                if not self.session:
                     self.session = aiohttp.ClientSession(timeout=self.timeout)
                 
-                # 发送异步请求
+                # 发送SERP请求
+                url = f"{self.serp_url}?customer=hl_d8b6c945&zone={self.zone}"
+                
                 async with self.session.post(
-                    self.base_url,
+                    url,
                     json=data,
                     headers=self.headers
                 ) as response:
                     response.raise_for_status()
                     
-                    # 解析响应
-                    if kwargs.get("format", "raw") == "raw":
-                        html = await response.text()
-                        results = self._parse_google_html(html)
+                    # 获取初始响应
+                    initial_response = await response.json()
+                    
+                    # 检查是否是异步模式
+                    if 'response_id' in initial_response:
+                        # 异步模式：轮询结果
+                        response_id = initial_response['response_id']
+                        logger.debug(f"异步模式，response_id: {response_id}")
+                        results_data = await self._poll_async_result(response_id)
                     else:
-                        results = await response.json()
+                        # 同步模式：直接使用结果
+                        results_data = initial_response
+                    
+                    processed_results = self._process_serp_results(results_data)
                     
                     elapsed = time.time() - start_time
-                    logger.info(f"搜索完成: {query[:50]}... 耗时: {elapsed:.2f}s, 结果数: {len(results) if isinstance(results, list) else 1}")
+                    result_count = len(processed_results) if isinstance(processed_results, list) else 1
                     
-                    ds_logger.log_output("BrightData搜索", {
+                    logger.info(f"SERP搜索完成: {query[:50]}... 耗时: {elapsed:.2f}s, 结果数: {result_count}")
+                    
+                    ds_logger.log_output("BrightData SERP搜索", {
                         "query": query,
-                        "results_count": len(results) if isinstance(results, list) else 1,
+                        "results_count": result_count,
                         "elapsed": elapsed
                     })
                     
                     return {
                         'success': True,
-                        'query': query,
-                        'results': results,
+                        'original_query': original_query,
+                        'optimized_query': query,
+                        'results': processed_results,
                         'elapsed': elapsed,
-                        'search_url': search_url,
+                        'serp_params': search_params,
+                        'strategy_used': use_strategy,
                         'timestamp': datetime.now().isoformat()
                     }
                     
             except asyncio.TimeoutError:
-                logger.error(f"搜索超时: {query}")
+                logger.error(f"SERP搜索超时: {query}")
                 return {
                     'success': False,
                     'query': query,
@@ -139,7 +179,7 @@ class BrightDataAsyncClient:
                     'elapsed': time.time() - start_time
                 }
             except aiohttp.ClientError as e:
-                logger.error(f"网络错误: {query}, 错误: {str(e)}")
+                logger.error(f"SERP网络错误: {query}, 错误: {str(e)}")
                 return {
                     'success': False,
                     'query': query,
@@ -147,8 +187,8 @@ class BrightDataAsyncClient:
                     'elapsed': time.time() - start_time
                 }
             except Exception as e:
-                logger.error(f"搜索错误: {query}, 错误: {str(e)}")
-                ds_logger.log_error("BrightData搜索", e, query=query)
+                logger.error(f"SERP搜索错误: {query}, 错误: {str(e)}")
+                ds_logger.log_error("BrightData SERP搜索", e, query=query)
                 return {
                     'success': False,
                     'query': query,
@@ -254,6 +294,124 @@ class BrightDataAsyncClient:
         
         return result  # 返回最后一次的结果
     
+    async def _poll_async_result(self, response_id: str, max_retries: int = 10) -> Dict:
+        """轮询异步请求结果"""
+        for attempt in range(max_retries):
+            try:
+                url = f"{self.result_url}?customer=hl_d8b6c945&zone={self.zone}&response_id={response_id}"
+                
+                async with self.session.get(url, headers=self.headers) as response:
+                    if response.status == 200:
+                        result = await response.json()
+                        logger.debug(f"异步结果获取成功，尝试 {attempt + 1}")
+                        return result
+                    elif response.status == 202:
+                        # 结果还未准备好，等待后重试
+                        logger.debug(f"结果未准备好，等待重试... (尝试 {attempt + 1}/{max_retries})")
+                        await asyncio.sleep(2)
+                        continue
+                    else:
+                        response.raise_for_status()
+                        
+            except Exception as e:
+                if attempt == max_retries - 1:
+                    logger.error(f"异步结果轮询失败: {e}")
+                    raise e
+                await asyncio.sleep(2)
+        
+        raise Exception(f"异步结果轮询超时: {response_id}")
+    
+    def _build_serp_params(self, query: str, options: dict) -> dict:
+        """构建SERP API参数 - 关键优化功能"""
+        params = {
+            "q": query,
+            "brd_json": 1,  # 关键：使用BrightData原生JSON解析
+            "num": options.get("num_results", 10),
+            "hl": options.get("language", "en"),
+            "gl": options.get("country", "us").lower()
+        }
+        
+        # 分页支持
+        page = options.get("page", 1)
+        if page > 1:
+            params["start"] = (page - 1) * params["num"]
+        
+        # 时间范围过滤
+        if date_range := options.get("date_range"):
+            params["tbs"] = f"qdr:{date_range}"
+        
+        # 搜索类型映射
+        search_type = options.get("search_type", "web")
+        if search_type == "news":
+            params["tbm"] = "nws"
+        elif search_type == "images":
+            params["tbm"] = "isch"
+        elif search_type == "videos":
+            params["tbm"] = "vid"
+        elif search_type == "shopping":
+            params["tbm"] = "shop"
+        elif search_type == "books":
+            params["tbm"] = "bks"
+        
+        # 地理位置精确控制
+        if location := options.get("location"):
+            if location.replace(" ", "").replace(",", "").isalpha():
+                params["uule"] = f"w+{location.replace(' ', '+')}"
+            else:
+                params["uule"] = location
+        
+        # 设备类型控制
+        device = options.get("device", "desktop")
+        if device == "mobile":
+            params["brd_mobile"] = 1
+        elif device == "ios":
+            params["brd_mobile"] = "ios"
+        elif device == "android":
+            params["brd_mobile"] = "android"
+        
+        return params
+    
+    def _process_serp_results(self, results: Dict) -> List[Dict]:
+        """处理SERP API返回的JSON结果 - 原生JSON解析"""
+        if not results or not isinstance(results, dict):
+            return []
+        
+        processed_results = []
+        
+        # 处理有机搜索结果（实际字段名是 "organic"）
+        organic_results = results.get("organic", [])
+        for i, result in enumerate(organic_results):
+            processed_result = {
+                'position': i + 1,
+                'title': result.get('title', ''),
+                'url': result.get('link', ''),
+                'snippet': result.get('description', ''),  # BrightData使用 'description'
+                'site': result.get('display_link', ''),
+            }
+            
+            # 添加可选字段
+            if 'date' in result:
+                processed_result['date'] = result['date']
+            if 'extensions' in result:
+                processed_result['extensions'] = result['extensions']
+            
+            processed_results.append(processed_result)
+        
+        # 处理新闻结果
+        if 'news' in results:
+            for i, news in enumerate(results['news']):
+                processed_results.append({
+                    'position': len(processed_results) + 1,
+                    'title': news.get('title', ''),
+                    'url': news.get('link', ''),
+                    'snippet': news.get('description', ''),
+                    'source': news.get('source', ''),
+                    'date': news.get('date', ''),
+                    'type': 'news'
+                })
+        
+        return processed_results
+    
     def _build_search_url(self, query: str, options: dict) -> str:
         """构建Google搜索URL"""
         # URL编码查询
@@ -313,86 +471,47 @@ class BrightDataAsyncClient:
         return full_url
     
     def _parse_google_html(self, html: str) -> List[Dict]:
-        """解析Google搜索结果HTML"""
+        """解析Google搜索结果HTML - 简化版（fallback使用）"""
+        # 注意：此方法仅作为fallback使用，主要使用SERP API的原生JSON解析
         soup = BeautifulSoup(html, 'html.parser')
         results = []
         
-        # 搜索结果的多种可能选择器
-        result_selectors = [
-            'div.g',  # 标准搜索结果
-            'div.Gx5Zad',  # 移动版结果
-            'div.kvH3mc',  # 另一种格式
-            'div[data-hveid]',  # 带有data属性的结果
-            'div.MjjYud'  # 新版Google结果容器
-        ]
+        # 查找基本结果容器
+        result_selectors = ['div.g', 'div.MjjYud', 'div.tF2Cxc']
         
-        # 尝试不同的选择器
         search_items = []
         for selector in result_selectors:
             search_items = soup.select(selector)
             if search_items:
-                logger.debug(f"使用选择器 '{selector}' 找到 {len(search_items)} 个结果")
                 break
         
-        # 如果还是没找到，尝试更宽泛的搜索
-        if not search_items:
-            # 查找包含链接和标题的div
-            search_items = soup.find_all('div', recursive=True)
-            search_items = [item for item in search_items 
-                           if item.find('a') and item.find('h3')][:20]
-            logger.debug(f"使用宽泛搜索找到 {len(search_items)} 个潜在结果")
-        
-        # 解析每个搜索结果
-        position = 1
-        for item in search_items:
+        # 简化的结果提取
+        for i, item in enumerate(search_items[:10]):
             try:
-                result = self._extract_result_info(item, position)
-                if result and result.get('url'):
-                    results.append(result)
-                    position += 1
-            except Exception as e:
-                logger.debug(f"解析单个结果失败: {e}")
+                h3 = item.find('h3')
+                link = item.find('a', href=True)
+                
+                if h3 and link:
+                    result = {
+                        'position': i + 1,
+                        'title': h3.get_text(strip=True),
+                        'url': link.get('href', ''),
+                        'snippet': ''  # HTML fallback模式下snippet提取简化
+                    }
+                    
+                    # 提取摘要
+                    for elem in item.find_all(['div', 'span']):
+                        text = elem.get_text(strip=True)
+                        if 50 <= len(text) <= 300:
+                            result['snippet'] = text
+                            break
+                    
+                    if result['url'].startswith('http'):
+                        results.append(result)
+            except:
                 continue
         
-        # 如果仍然没有结果，尝试解析JSON-LD数据
-        if len(results) == 0:
-            script_tags = soup.find_all('script', type='application/ld+json')
-            for script in script_tags:
-                try:
-                    data = json.loads(script.string)
-                    if isinstance(data, dict) and data.get('@type') == 'SearchResultsPage':
-                        # 解析结构化数据
-                        if 'mainEntity' in data:
-                            for item in data['mainEntity']:
-                                if item.get('@type') == 'WebPage':
-                                    results.append({
-                                        'title': item.get('name', ''),
-                                        'url': item.get('url', ''),
-                                        'snippet': item.get('description', ''),
-                                        'position': len(results) + 1
-                                    })
-                except:
-                    continue
-        
-        # 过滤掉Google内部链接
-        filtered_results = []
-        for result in results:
-            url = result.get('url', '')
-            # 跳过Google内部链接
-            if url.startswith('/search') or url.startswith('/url'):
-                continue
-            # 确保是完整的URL
-            if url.startswith('http://') or url.startswith('https://'):
-                filtered_results.append(result)
-        
-        logger.info(f"解析完成，找到 {len(results)} 个结果，过滤后 {len(filtered_results)} 个真实搜索结果")
-        
-        # 如果过滤后没有结果，使用原始结果
-        if len(filtered_results) == 0 and len(results) > 0:
-            logger.warning("过滤后无结果，返回原始结果")
-            return results
-        
-        return filtered_results
+        return results
     
     def _extract_result_info(self, item, position: int) -> Optional[Dict]:
         """从单个搜索结果项提取信息"""

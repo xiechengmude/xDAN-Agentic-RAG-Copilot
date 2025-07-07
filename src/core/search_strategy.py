@@ -251,13 +251,13 @@ class SearchStrategy:
     
     def optimize_search_query(self, question: str) -> Dict[str, Any]:
         """
-        完整的搜索查询优化流程
+        完整的搜索查询优化流程 - 集成SERP API参数映射
         
         Args:
             question: 原始问题
             
         Returns:
-            优化结果字典
+            优化结果字典，包含SERP API参数
         """
         # 1. 分析问题特征
         analysis = self.analyze_question(question)
@@ -268,12 +268,15 @@ class SearchStrategy:
         step3_operators = self.add_search_operators(step2_domain, analysis)
         
         # 3. 生成适合BrightData的查询（不使用Google特定算子）
-        # 移除可能不兼容的算子，保留关键词
         brightdata_query = self._prepare_for_brightdata(step2_domain, analysis)
+        
+        # 4. 生成SERP API参数（新增）
+        serp_params = self._generate_serp_params(question, analysis)
         
         result = {
             'original_question': question,
-            'optimized_question': brightdata_query,  # 使用BrightData兼容的查询
+            'optimized_question': brightdata_query,
+            'serp_params': serp_params,  # SERP API参数
             'analysis': analysis,
             'optimization_steps': {
                 'time_enhanced': step1_time,
@@ -284,6 +287,7 @@ class SearchStrategy:
         }
         
         logger.info(f"[搜索优化完成] {question} → {brightdata_query}")
+        logger.debug(f"[SERP参数] {serp_params}")
         
         return result
     
@@ -420,6 +424,108 @@ class SearchStrategy:
             logger.info(f"更新领域配置: {domain}")
         else:
             logger.warning(f"领域不存在: {domain}")
+    
+    def _generate_serp_params(self, question: str, analysis: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        基于问题分析生成SERP API参数
+        
+        Args:
+            question: 原始问题
+            analysis: 问题分析结果
+            
+        Returns:
+            SERP API参数字典
+        """
+        params = {
+            'search_type': 'web',  # 默认web搜索
+            'num_results': 10,
+            'language': 'en',
+            'country': 'us'
+        }
+        
+        # 1. 领域检测到搜索类型映射
+        detected_domain = analysis.get('detected_domain')
+        if detected_domain == 'news':
+            params['search_type'] = 'news'
+        elif detected_domain == 'academic':
+            params['search_type'] = 'web'  # 学术用web但添加特殊处理
+            params['num_results'] = 15  # 学术查询需要更多结果
+        elif detected_domain == 'finance':
+            params['search_type'] = 'news'  # 财经也使用新闻搜索
+        
+        # 2. 时间上下文到时间过滤器映射
+        question_lower = question.lower()
+        if analysis.get('has_time_context') or any(kw in question_lower for kw in ['最新', '最近', '今天', '本周', '今年']):
+            if any(kw in question_lower for kw in ['今天', '今日', 'today']):
+                params['date_range'] = 'd'  # 最近一天
+            elif any(kw in question_lower for kw in ['本周', '最近一周', 'this week']):
+                params['date_range'] = 'w'  # 最近一周
+            elif any(kw in question_lower for kw in ['本月', '最近一月', 'this month']):
+                params['date_range'] = 'm'  # 最近一月
+            elif any(kw in question_lower for kw in ['今年', '2024', '2025', 'this year']):
+                params['date_range'] = 'y'  # 最近一年
+            else:
+                params['date_range'] = 'm'  # 默认最近一月
+        
+        # 3. 问题类型到结果数量映射
+        if analysis.get('question_type') == 'analysis' or analysis.get('complexity') == 'complex':
+            params['num_results'] = 15  # 复杂问题需要更多结果
+        
+        # 4. 语言和地区优化
+        # 检测中文内容
+        if any('\u4e00' <= c <= '\u9fff' for c in question):
+            params['language'] = 'zh-CN'
+            params['country'] = 'cn'
+        
+        # 5. 地理位置检测
+        location_keywords = {
+            '中国': 'China',
+            '美国': 'United States',
+            '北京': 'Beijing, China',
+            '上海': 'Shanghai, China',
+            '深圳': 'Shenzhen, China',
+            '广州': 'Guangzhou, China'
+        }
+        
+        for keyword, location in location_keywords.items():
+            if keyword in question:
+                params['location'] = location
+                break
+        
+        # 6. 特殊领域的高级参数
+        if detected_domain == 'news':
+            # 新闻搜索优化
+            params['device'] = 'desktop'  # 新闻内容在桌面端更完整
+        elif detected_domain == 'academic':
+            # 学术搜索优化
+            params['country'] = 'us'  # 学术内容以英文为主
+            params['language'] = 'en'
+        elif detected_domain == 'finance':
+            # 财经搜索优化
+            if params['country'] == 'cn':
+                params['location'] = 'China'  # 中国财经新闻
+        
+        logger.debug(f"[SERP参数生成] 领域: {detected_domain}, 参数: {params}")
+        
+        return params
+    
+    def get_enhanced_search_params(self, question: str) -> Dict[str, Any]:
+        """
+        获取增强的搜索参数（外部调用接口）
+        
+        Args:
+            question: 用户问题
+            
+        Returns:
+            包含优化查询和SERP参数的字典
+        """
+        optimization_result = self.optimize_search_query(question)
+        
+        return {
+            'query': optimization_result['optimized_question'],
+            'serp_params': optimization_result['serp_params'],
+            'analysis': optimization_result['analysis']
+        }
 
 
 # 全局搜索策略实例
