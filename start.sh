@@ -1,6 +1,7 @@
 #!/bin/bash
-# Flash Search API Server 启动脚本 (无数据库版本)
-# 专门用于在线搜索，不需要本地存储
+# FlashSearch API 统一启动脚本
+# 启动Flash Search API服务器（无数据库版本）
+# 自动禁用代理，确保外部API正常访问
 
 set -e
 
@@ -11,7 +12,15 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-echo -e "${BLUE}🚀 启动 Flash Search API Server (无数据库模式)${NC}"
+echo -e "${BLUE}🚀 启动 FlashSearch API 服务器${NC}"
+
+# 禁用代理以避免外部API调用问题
+echo -e "${YELLOW}🔧 禁用本地代理...${NC}"
+unset HTTP_PROXY
+unset HTTPS_PROXY
+unset http_proxy
+unset https_proxy
+export NO_PROXY="*"
 
 # 检查Python环境
 if ! command -v python3 &> /dev/null; then
