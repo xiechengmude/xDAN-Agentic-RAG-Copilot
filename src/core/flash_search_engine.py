@@ -169,18 +169,20 @@ class FlashSearchEngine:
             return f"【来源{index}】{title}"
     
     
-    async def search(self, question: str, use_alternative_strategy: bool = False) -> List[Dict[str, Any]]:
+    async def search(self, question: str, use_alternative_strategy: bool = False, country: str = None, language: str = None) -> List[Dict[str, Any]]:
         """
         快速SERP搜索
         
         Args:
             question: 用户问题
             use_alternative_strategy: 是否使用备选搜索策略（用于重试）
+            country: 搜索国家代码（如'CN', 'US'），None时自动检测
+            language: 搜索语言（如'zh-CN', 'en'），None时自动检测
             
         Returns:
             搜索结果列表，包含URL、标题、摘要
         """
-        logger.info(f"[Search] 开始搜索: {question[:50]}... (备选策略: {use_alternative_strategy})")
+        logger.info(f"[Search] 开始搜索: {question[:50]}... (备选策略: {use_alternative_strategy}, 国家: {country})")
         start_time = time.time()
         
         try:
@@ -192,13 +194,28 @@ class FlashSearchEngine:
                 optimization_result = search_strategy.optimize_search_query(question)
             optimized_question = optimization_result['optimized_question']
             
-            logger.info(f"[搜索优化] {question} → {optimized_question}")
+            # 从优化结果中获取SERP参数（包含自动检测的country和language）
+            serp_params = optimization_result.get('serp_params', {})
+            
+            # 使用传入的参数覆盖自动检测的值
+            if country:
+                search_country = country
+            else:
+                search_country = serp_params.get('country', 'CN').upper()
+            
+            if language:
+                search_language = language
+            else:
+                search_language = serp_params.get('language', 'zh-CN')
+            
+            logger.info(f"[搜索优化] {question} → {optimized_question} (国家: {search_country}, 语言: {search_language})")
             
             # 使用BrightData进行搜索
             search_response = await self.bright_client.search(
                 query=optimized_question,
                 num_results=SEARCH_RESULTS,
-                country="CN"
+                country=search_country,
+                language=search_language
             )
             
             # 检查搜索是否成功

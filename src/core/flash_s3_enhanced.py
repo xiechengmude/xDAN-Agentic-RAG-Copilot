@@ -283,6 +283,11 @@ class FlashS3Enhanced(FlashSearchEngine):
             if strategy == "precision":
                 # 精准搜索
                 task = self.search(question)
+            elif strategy == "bilingual":
+                # 双语搜索 - 使用batch_search实现并行搜索
+                bilingual_results = await self._bilingual_search(question)
+                # 直接返回双语结果，不需要再gather
+                return self._smart_merge_results([bilingual_results], previous_results)
             elif strategy == "broad":
                 # 扩展搜索
                 task = self.search(question, use_alternative_strategy=True)
@@ -382,6 +387,172 @@ class FlashS3Enhanced(FlashSearchEngine):
         union = words1 | words2
         
         return len(intersection) / len(union)
+    
+    async def _bilingual_search(self, question: str) -> List[Dict[str, Any]]:
+        """
+        双语搜索实现 - 使用LLM智能生成搜索查询
+        
+        Args:
+            question: 用户问题
+            
+        Returns:
+            合并后的搜索结果
+        """
+        logger.info(f"[Bilingual] 开始双语搜索: {question[:50]}...")
+        
+        # 检测问题语言
+        is_chinese = any('\u4e00' <= c <= '\u9fff' for c in question)
+        
+        # 使用LLM智能生成双语搜索查询
+        bilingual_queries = await self._generate_bilingual_queries(question, is_chinese)
+        
+        # 准备搜索参数
+        queries = [
+            {"query": bilingual_queries['cn_query'], "country": "CN", "language": "zh-CN"},
+            {"query": bilingual_queries['en_query'], "country": "US", "language": "en"}
+        ]
+        
+        logger.info(f"[Bilingual] 中文查询: {queries[0]['query'][:50]}...")
+        logger.info(f"[Bilingual] 英文查询: {queries[1]['query'][:50]}...")
+        
+        # 并发执行双语搜索
+        search_tasks = []
+        for q in queries:
+            task = self.search(
+                question=q["query"],
+                country=q["country"],
+                language=q["language"]
+            )
+            search_tasks.append(task)
+        
+        # 执行并发搜索
+        results = await asyncio.gather(*search_tasks, return_exceptions=True)
+        
+        # 合并结果
+        all_results = []
+        for i, result in enumerate(results):
+            if isinstance(result, Exception):
+                logger.warning(f"[Bilingual] 搜索失败 ({queries[i]['country']}): {result}")
+                continue
+            if isinstance(result, list):
+                logger.info(f"[Bilingual] {queries[i]['country']}搜索返回 {len(result)} 个结果")
+                all_results.extend(result)
+        
+        logger.info(f"[Bilingual] 双语搜索完成，共 {len(all_results)} 个结果")
+        return all_results
+    
+    async def _generate_bilingual_queries(self, question: str, is_chinese: bool) -> Dict[str, str]:
+        """
+        使用LLM智能生成双语搜索查询
+        
+        Args:
+            question: 用户问题
+            is_chinese: 是否为中文问题
+            
+        Returns:
+            包含中英文查询的字典
+        """
+        # 构建prompt，让LLM生成优化的双语搜索查询
+        prompt = f"""You are a bilingual search query optimizer. Given a user question, generate optimized search queries in both Chinese and English.
+
+User Question: {question}
+
+Requirements:
+1. Generate TWO search queries: one in Chinese, one in English
+2. Each query should:
+   - Include relevant search operators (site:, filetype:, after:, etc.) when appropriate
+   - Be optimized for search engines (Google/Baidu)
+   - Focus on finding the most relevant results
+   - Include domain-specific terminology
+3. For financial/investment queries, include relevant financial terms
+4. For technical queries, include technical jargon and documentation keywords
+5. Add time filters if the query implies recency (e.g., "latest", "recent", "2024")
+
+Output format (JSON):
+{{
+    "cn_query": "optimized Chinese search query with operators",
+    "en_query": "optimized English search query with operators",
+    "reasoning": "brief explanation of optimization strategy"
+}}
+
+Examples:
+- Question: "筛选成立3年以上、规模10亿以上的成长型基金"
+  Output: {{
+    "cn_query": "成长型基金 筛选 规模10亿以上 成立3年 基金评级 晨星 天天基金",
+    "en_query": "growth funds screening AUM 1 billion+ 3 years track record Morningstar ratings",
+    "reasoning": "Added fund rating platforms and specific criteria for better results"
+  }}
+
+- Question: "最新的AI技术发展趋势"
+  Output: {{
+    "cn_query": "人工智能 AI 技术趋势 2024 最新进展 深度学习 大模型",
+    "en_query": "artificial intelligence trends 2024 latest developments deep learning LLM after:2024-01-01",
+    "reasoning": "Added time filter and specific AI terminology"
+  }}"""
+
+        try:
+            response = await self.llm_client.chat_completion(
+                messages=[{"role": "user", "content": prompt}],
+                use_case="bilingual_query_generation",
+                temperature=0.3,
+                max_tokens=300
+            )
+            
+            # 解析LLM响应
+            import json
+            content = response.choices[0].message.content
+            
+            # 尝试提取JSON
+            start = content.find('{')
+            end = content.rfind('}') + 1
+            if start >= 0 and end > start:
+                json_str = content[start:end]
+                result = json.loads(json_str)
+                
+                logger.info(f"[Bilingual] LLM生成策略: {result.get('reasoning', 'N/A')}")
+                
+                return {
+                    'cn_query': result.get('cn_query', question),
+                    'en_query': result.get('en_query', question)
+                }
+            
+        except Exception as e:
+            logger.warning(f"[Bilingual] LLM查询生成失败: {e}，使用降级策略")
+        
+        # 降级策略：简单处理
+        if is_chinese:
+            return {
+                'cn_query': question,
+                'en_query': self._simple_translate(question)
+            }
+        else:
+            return {
+                'en_query': question,
+                'cn_query': question
+            }
+    
+    def _simple_translate(self, chinese_text: str) -> str:
+        """
+        简单的降级翻译（仅在LLM失败时使用）
+        """
+        # 提取数字和年份
+        import re
+        numbers = re.findall(r'\d+', chinese_text)
+        
+        # 基础关键词
+        basic_terms = []
+        if '基金' in chinese_text:
+            basic_terms.append('fund')
+        if '股票' in chinese_text:
+            basic_terms.append('stock')
+        if '投资' in chinese_text:
+            basic_terms.append('investment')
+        if '最新' in chinese_text or '最近' in chinese_text:
+            basic_terms.append('latest')
+        
+        # 组合查询
+        query_parts = basic_terms + numbers
+        return ' '.join(query_parts) if query_parts else "investment analysis"
     
     async def flash_s3_enhanced(self, question: str) -> Dict[str, Any]:
         """

@@ -17,15 +17,15 @@ class SearchMode(Enum):
 SEARCH_MODE_CONFIGS: Dict[SearchMode, Dict[str, Any]] = {
     SearchMode.FAST: {
         "name": "快速模式",
-        "description": "适合快速获取答案，牺牲部分准确性",
+        "description": "适合快速获取答案，支持双语搜索",
         "max_iterations": 1,
         "time_budget": 15,
-        "search_strategies": ["precision"],
-        "search_results": 6,
-        "select_urls": 2,
+        "search_strategies": ["bilingual"],  # 改为双语策略
+        "search_results": 12,  # 增加到12个（中英各6个）
+        "select_urls": 3,  # 增加到3个URL
         "crawl_timeout": 10,
         "brightdata_timeout": 15,
-        "parallel_crawl": 2,
+        "parallel_crawl": 3,  # 增加并发爬取数
         "skip_s3_evaluation": True,
         "enable_cache": True,
         "llm_temperature": 0.5,
