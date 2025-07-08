@@ -1,14 +1,14 @@
 #!/bin/bash
-# FlashSearch API 部署脚本 v0708-0130
+# FlashSearch API 部署脚本
 # 简化版 - 遵循 KISS 和 DRY 原则
 #
 # 使用方法:
-#   ./0708-0130.sh [HOST] [PORT] [LOG_LEVEL] [WORKERS]
+#   ./deploy.sh [HOST] [PORT] [LOG_LEVEL] [WORKERS]
 #
 # 示例:
-#   ./0708-0130.sh                    # 默认: 0.0.0.0 8060
-#   ./0708-0130.sh 0.0.0.0 8062       # 指定端口 8062
-#   ./0708-0130.sh 0.0.0.0 8062 debug # 调试模式
+#   ./deploy.sh                    # 默认: 0.0.0.0 8060
+#   ./deploy.sh 0.0.0.0 8062       # 指定端口 8062
+#   ./deploy.sh 0.0.0.0 8062 debug # 调试模式
 
 set -e
 
