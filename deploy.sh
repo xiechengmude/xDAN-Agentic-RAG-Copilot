@@ -89,8 +89,8 @@ echo -e "${YELLOW}🔧 步骤4: 启动服务${NC}"
 mkdir -p logs
 LOG_FILE="logs/flashsearch_${PORT}_$(date +%Y%m%d_%H%M%S).log"
 
-# 启动命令 - 明确传递端口参数
-CMD="python3 server/api/flash_search_api.py --host $HOST --port $PORT --log-level $LOG_LEVEL --workers $WORKERS"
+# 启动命令 - 明确传递端口参数并覆盖环境变量
+CMD="env PORT=$PORT python3 server/api/flash_search_api.py --host $HOST --port $PORT --log-level $LOG_LEVEL --workers $WORKERS"
 
 echo -e "${CYAN}执行命令: $CMD${NC}"
 
