@@ -393,7 +393,7 @@ if __name__ == "__main__":
         print("🔄 开发模式: 热重载已启用")
     
     uvicorn.run(
-        "flash_search_api:app",
+        app,
         host=args.host,
         port=args.port,
         reload=args.reload,
