@@ -13,7 +13,7 @@ NC='\033[0m'
 
 # API配置
 API_HOST=${API_HOST:-"localhost"}
-API_PORT=${API_PORT:-"8050"}
+API_PORT=${API_PORT:-"${FLASHSEARCH_PORT:-8060}"}
 API_BASE="http://${API_HOST}:${API_PORT}"
 
 echo -e "${BLUE}=================================================${NC}"

@@ -11,8 +11,9 @@ import time
 from typing import Dict, Any, AsyncGenerator
 
 # API配置
-API_HOST = "localhost"
-API_PORT = 8050
+import os
+API_HOST = os.environ.get("API_HOST", "localhost")
+API_PORT = int(os.environ.get("API_PORT", os.environ.get("FLASHSEARCH_PORT", "8060")))
 API_BASE = f"http://{API_HOST}:{API_PORT}"
 
 

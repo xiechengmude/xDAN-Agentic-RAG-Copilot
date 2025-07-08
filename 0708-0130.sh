@@ -42,7 +42,7 @@ echo -e "${BLUE}=================================================${NC}"
 
 # 部署配置
 DEFAULT_HOST="0.0.0.0"
-DEFAULT_PORT="8050"
+DEFAULT_PORT="${FLASHSEARCH_PORT:-8060}"
 DEFAULT_LOG_LEVEL="info"
 DEFAULT_WORKERS="1"
 AUTO_CLEAN="true"  # 默认自动清理旧进程
@@ -184,6 +184,8 @@ LOG_FILE="logs/flashsearch_${PORT}_$(date +%Y%m%d_%H%M%S).log"
 echo -e "${CYAN}🚀 启动 FlashSearch API 服务器...${NC}"
 
 # 启动命令
+# 确保端口参数正确传递
+echo -e "${CYAN}📋 启动参数: HOST=$HOST PORT=$PORT LOG_LEVEL=$LOG_LEVEL WORKERS=$WORKERS${NC}"
 START_CMD="python3 server/api/flash_search_api.py --host $HOST --port $PORT --log-level $LOG_LEVEL --workers $WORKERS"
 
 # 后台启动

@@ -50,7 +50,7 @@ fi
 
 # 设置默认参数
 HOST=${HOST:-"0.0.0.0"}
-PORT=${PORT:-"8060"}
+PORT=${PORT:-"${FLASHSEARCH_PORT:-8060}"}
 LOG_LEVEL=${LOG_LEVEL:-"info"}
 
 # 清理旧进程

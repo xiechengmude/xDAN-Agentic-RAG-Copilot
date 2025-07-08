@@ -4,7 +4,7 @@
 
 # API配置
 HOST=${1:-"localhost"}
-PORT=${2:-"8050"}
+PORT=${2:-"${FLASHSEARCH_PORT:-8060}"}
 API="http://$HOST:$PORT"
 
 echo "🚀 FlashSearch API 快速测试"
