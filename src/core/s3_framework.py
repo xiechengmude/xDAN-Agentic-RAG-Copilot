@@ -424,7 +424,8 @@ Please analyze whether the above information is sufficient to answer the questio
                                 final_answer = chunk["final_answer"]
                                 workflow_result["final_answer"] = final_answer
                             else:
-                                yield chunk
+                                # 包装流式文本片段为标准格式
+                                yield {"answer": chunk, "stage": "synthesis", "stream": True}
                     else:
                         async for result in self.synthesize_phase(question, selected_docs, stream=False):
                             if isinstance(result, dict) and "final_answer" in result:
@@ -458,16 +459,36 @@ Please analyze whether the above information is sufficient to answer the questio
             workflow_result["end_time"] = datetime.now().isoformat()
             logger.info("S3工作流执行完成")
             
-            if stream:
-                yield {"workflow_result": workflow_result}
-            else:
-                yield workflow_result
+            # 构建最终返回结果，确保包含answer字段用于测试
+            final_result = {
+                "answer": workflow_result.get("final_answer", ""),
+                "metadata": {
+                    "search_rounds": len(workflow_result.get("rounds", [])),
+                    "documents_used": len(workflow_result.get("selected_documents", [])),
+                    "workflow_completed": workflow_result.get("workflow_completed", False),
+                    "execution_time": workflow_result.get("end_time", ""),
+                    "langfuse_traces": []  # 可以后续添加追踪信息
+                },
+                "workflow_result": workflow_result  # 保留完整的工作流结果
+            }
+            
+            yield final_result
             
         except Exception as e:
             logger.error(f"S3工作流执行失败：{e}")
             workflow_result["error"] = str(e)
             workflow_result["final_answer"] = f"抱歉，在处理您的问题时遇到错误：{e}"
-            if stream:
-                yield {"workflow_result": workflow_result}
-            else:
-                yield workflow_result
+            
+            # 错误情况下也要返回标准格式
+            error_result = {
+                "answer": workflow_result["final_answer"],
+                "metadata": {
+                    "search_rounds": len(workflow_result.get("rounds", [])),
+                    "documents_used": 0,
+                    "workflow_completed": False,
+                    "error": str(e)
+                },
+                "workflow_result": workflow_result
+            }
+            
+            yield error_result
